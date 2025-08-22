@@ -75,7 +75,7 @@ export default function Room({ roomId, name, onLeave }) {
         // onLeave parent'i çağırarak UI'dan çıkart ve oluşturma sayfasına yönlendir
         setTimeout(() => {
           onLeave()
-          navigate('/') // ana sayfaya yönlendir
+          //navigate('/') // ana sayfaya yönlendir
         }, 50)
       }
     }
@@ -322,15 +322,16 @@ export default function Room({ roomId, name, onLeave }) {
             <button
               className="btn"
               onClick={async () => {
+                onLeave()
                 try {
                   if (isModerator) {
-                    await remove(roomRef)
+                     remove(roomRef)
                   } else {
-                    await remove(ref(db, `rooms/${roomId}/participants/${user.uid}`))
+                     remove(ref(db, `rooms/${roomId}/participants/${user.uid}`))
                   }
                 } catch (e) { console.error(e) }
-                onLeave()
-                navigate('/') // navigate to home
+                
+                //navigate('/') // navigate to home
               }}
             >
               Leave

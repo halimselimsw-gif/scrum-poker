@@ -27,4 +27,3 @@ export async function ensureAuth() {
   }
   return auth.currentUser;
 }
- 

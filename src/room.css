@@ -105,6 +105,7 @@
   box-sizing: border-box;
   transition: transform .18s ease, box-shadow .18s ease;
   z-index: 1;
+  padding: 1;
 }
 
 /* Bring hovered/active card above neighbors so it doesn't get visually clipped */
@@ -270,6 +271,17 @@
   border: 2px solid rgba(0,0,0,0.14);
   color: white;
   transform: rotateY(0deg);
+}
+
+.kick-btn {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255,255,255,0.06), transparent 8%),
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0 6px, rgba(0,0,0,0.02) 6px 12px),
+    linear-gradient(180deg,#b5162e,#ff4b4b);
+  border: 2px solid rgba(0,0,0,0.14);
+  color: white;
+  transform: rotateY(0deg);
+  border-radius:6px;
 }
 
 /* front (face) initially rotated away */
