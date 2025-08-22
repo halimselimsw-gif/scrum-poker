@@ -1,10 +1,3 @@
-import { initializeApp } from 'firebase/app'
-import { getDatabase } from 'firebase/database'
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth'
-
-
-
-
 // src/firebase.js
 import { initializeApp } from "firebase/app";
 import { getDatabase } from "firebase/database";
