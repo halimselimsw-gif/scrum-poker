@@ -22,10 +22,6 @@ const firebaseConfig = {
 };
 
 
-
-
-
-
 // Firebase başlat
 const app = initializeApp(firebaseConfig);
 export const db = getDatabase(app);
