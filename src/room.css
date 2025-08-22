@@ -1,0 +1,393 @@
+/* Poker-styled card buttons */
+.cardBtn.poker {
+  position: relative;
+  --w: 96px;
+  --h: 140px;
+  width: var(--w);
+  height: var(--h);
+  padding: 8px;
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, #fff 0%, #f7f7f7 100%);
+  border: 1px solid rgba(0,0,0,0.14);
+  box-shadow:
+    0 10px 28px rgba(3,10,18,0.12),
+    inset 0 1px 0 rgba(255,255,255,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 800;
+  color: #111;
+  cursor: pointer;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .12s ease;
+  user-select: none;
+  overflow: hidden;
+  margin: 8px; /* a little extra outer spacing */
+}
+
+/* variant for active/selected card */
+.cardBtn.poker.active {
+  transform: translateY(-8px) scale(1.05);
+  border-color: #2b7cff;
+  box-shadow:
+    0 18px 36px rgba(43,124,255,0.12),
+    inset 0 1px 0 rgba(255,255,255,0.6);
+  background: linear-gradient(180deg, #f4fbff 0%, #e8f4ff 100%);
+  color: #06326a;
+}
+
+/* Subtle turquoise tint for selection cards (not too strong) */
+.cardBtn.poker:not(.active) {
+  /* light turquoise overlay + original soft card look */
+  background:
+    linear-gradient(180deg, rgba(34,211,238,0.045) 0%, rgba(34,211,238,0.02) 50%, rgba(255,255,255,0.01) 100%),
+    linear-gradient(180deg, #fff 0%, #f7f7f7 100%);
+  border-color: rgba(34,211,238,0.10);
+  color: #08131a; /* slightly darker text for contrast on the tinted bg */
+}
+
+/* subtle playing-card back pattern overlay (keeps front value readable) */
+.cardBtn.poker::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 8px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(255,255,255,0.03), transparent 12%),
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0 6px, rgba(0,0,0,0.01) 6px 12px);
+  opacity: 0.08;
+}
+
+/* hover/focus */
+.cardBtn.poker:hover:not(:disabled) {
+  transform: translateY(-6px);
+  box-shadow: 0 14px 30px rgba(3,10,18,0.10);
+  border-color: rgba(34,211,238,0.18);
+}
+.cardBtn.poker:active { transform: translateY(-2px) scale(.995); }
+
+/* disabled look */
+.cardBtn.poker:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* internal layout (makes the label centered and large) */
+.cardBtn.poker .poker-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 22px;
+  line-height: 1;
+  z-index: 2; /* above the pattern */
+  text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+}
+
+/* Responsive grid for selection cards: wrap, gap and center */
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px; /* increased from 12px */
+  justify-content: center;
+  align-items: center;
+  margin: 0; /* ensure no extra collapse */
+}
+
+/* Make card buttons take a stable responsive width so they don't overlap */
+.cardBtn.poker {
+  flex: 0 0 76px;   /* preferred card width */
+  min-width: 64px;  /* minimum so content doesn't wrap weirdly */
+  margin: 8px; /* a little extra outer spacing */
+  box-sizing: border-box;
+  transition: transform .18s ease, box-shadow .18s ease;
+  z-index: 1;
+}
+
+/* Bring hovered/active card above neighbors so it doesn't get visually clipped */
+.cardBtn.poker:hover:not(:disabled),
+.cardBtn.poker.active {
+  z-index: 6;
+}
+
+/* Smaller screens: reduce card size and gaps to avoid wrapping collisions */
+@media (max-width: 520px) {
+  .grid { gap: 10px; }
+  .cardBtn.poker { --w:72px; --h:104px; margin:6px; }
+  .cardBtn.poker .poker-top { font-size:16px; }
+}
+
+/* Participant card with cartoon-queen avatar */
+.participant-card {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:10px;
+  border-radius:10px;
+  background: linear-gradient(180deg,#ffffff,#fbfbfd);
+  border:1px solid rgba(0,0,0,0.06);
+  min-width:140px;
+  margin:6px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.04);
+}
+.participant-card .avatar {
+  width:48px;
+  height:48px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:26px;
+  transition: transform .15s ease, filter .15s ease, box-shadow .15s ease;
+  background: radial-gradient(circle at 30% 20%, #fff6, #0000);
+}
+
+/* not voted: muted / gray queen */
+.participant-card.not-voted .avatar {
+  filter: grayscale(100%) contrast(.9) opacity(.6);
+  transform: scale(1);
+}
+
+/* voted: colorful queen with glow */
+.participant-card.voted .avatar {
+  filter: none;
+  transform: scale(1.06);
+  box-shadow: 0 6px 18px rgba(43,124,255,0.12);
+}
+
+/* small info area */
+.participant-card .p-info { display:flex; flex-direction:column; min-width:0 }
+.participant-card .p-name { font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.participant-card .p-status { color:#666; font-size:12px }
+.participant-card .p-vote { font-weight:800; font-size:18px; margin-top:4px }
+
+/* optional tiny pulse when someone just voted (add class dynamically if needed) */
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(43,124,255,0.18) }
+  70% { box-shadow: 0 0 0 8px rgba(43,124,255,0) }
+  100% { box-shadow: 0 0 0 0 rgba(43,124,255,0) }
+}
+.participant-card.voted.pulse .avatar { animation: pulse 900ms ease-out }
+
+/* vurgulama: kendi kullanıcı kartı */
+.participant.me {
+  border: 2px solid var(--accent);
+  box-shadow: 0 10px 30px rgba(34,211,238,0.10);
+  background: linear-gradient(180deg, rgba(34,211,238,0.03), rgba(255,255,255,0.01));
+  transform: translateY(-2px);
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+
+/* daha belirgin isim rengi */
+.participant.me .p-name {
+  color: #ffffff;
+  font-weight:800;
+}
+
+/* küçük "Siz" rozet */
+.me-badge {
+  display:inline-block;
+  margin-left:8px;
+  padding:2px 8px;
+  font-size:12px;
+  font-weight:700;
+  border-radius:999px;
+  background:var(--accent);
+  color:#00111a;
+  vertical-align:middle;
+}
+
+/* responsive küçük ekranlarda da göze çarpması için */
+@media (max-width:600px) {
+  .participant.me { border-width: 1.5px; box-shadow: 0 6px 18px rgba(34,211,238,0.07); }
+  .me-badge { padding:2px 6px; font-size:11px }
+}
+
+/* avatar */
+.participant .avatar {
+  width:44px;
+  height:44px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:22px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  transition: transform .12s ease, filter .12s ease, box-shadow .12s ease;
+  /* merkezde daha iyi görünmesi için line-height sıfır */
+  line-height:0;
+}
+
+/* biraz daha büyük avatarlar, 10 kişiye kadar iyi görünür */
+.participant .avatar { font-size:28px; width:52px; height:52px; }
+
+/* Card visual (back/front flip) */
+.participant-card.poker {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:8px;
+  border-radius:10px;
+  background:transparent;
+  border: none;
+  min-width:220px;
+  margin:6px;
+}
+
+/* 3D container for the card */
+.card-visual {
+  width:84px;
+  height:116px;
+  perspective: 1200px;
+  position: relative;
+  flex: 0 0 auto;
+  margin-right:12px;
+  transform-style: preserve-3d;
+}
+.card-visual .card-side {
+  position:absolute;
+  inset:0;
+  border-radius:8px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.16);
+  transform-style: preserve-3d;
+  overflow:hidden;
+}
+
+/* back design (playing-card-like) */
+.card-back {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255,255,255,0.06), transparent 8%),
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0 6px, rgba(0,0,0,0.02) 6px 12px),
+    linear-gradient(180deg,#b5162e,#8f1020);
+  border: 2px solid rgba(0,0,0,0.14);
+  color: white;
+  transform: rotateY(0deg);
+}
+
+/* front (face) initially rotated away */
+.card-front {
+  background: linear-gradient(180deg,#fff,#fafafa);
+  border: 1px solid rgba(0,0,0,0.06);
+  transform: rotateY(180deg);
+}
+
+/* center value shown on front */
+.card-value {
+  font-size:28px;
+  font-weight:900;
+  color:#111;
+  padding:6px;
+  text-align:center;
+}
+
+/* flip animation: rotate the whole .card-visual container */
+.card-visual {
+  transition: transform 420ms cubic-bezier(.2,.9,.3,1);
+  transform-style: preserve-3d;
+}
+.card-visual.flipped {
+  transform: rotateY(180deg);
+}
+
+/* make sure front sits above back when flipped */
+.card-visual .card-side.card-front { z-index: 2; }
+.card-visual .card-side.card-back { z-index: 1; }
+
+/* subtle rounded inner pattern to mimic card back detail */
+.card-back::after {
+  content: '';
+  position:absolute;
+  inset:12%;
+  border-radius:6px;
+  background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.03), transparent 30%);
+  opacity: 0.9;
+}
+
+/* ensure responsive size */
+@media (max-width:600px) {
+  .card-visual { width:64px; height:92px }
+  .card-value { font-size:20px }
+}
+
+/* If the current user is also the moderator: stronger red with visible turquoise ring */
+.participant-card.poker.moderator.me {
+  /* prominent red primary border */
+  border: 2px solid #ff4b4b;
+
+  /* turquoise inner ring (inset) + red outer ring + subtle red lift */
+  box-shadow:
+    0 0 0 3px rgba(34,211,238,0.20) inset, /* inner turquoise ring */
+    0 0 0 6px rgba(255,75,75,0.14),        /* outer red ring */
+    0 10px 30px rgba(255,75,75,0.18);      /* red lift for prominence */
+
+  /* tiny blended background so both colors read together */
+  background: linear-gradient(180deg, rgba(255,75,75,0.02), rgba(34,211,238,0.02));
+  transform: translateY(-2px);
+  transition: box-shadow .18s ease, transform .12s ease;
+}
+
+/* ensure badge/readability contrasts when both roles apply */
+.participant-card.poker.moderator.me .me-badge {
+  background: #ff4b4b;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+}
+
+/* fallback styles keep working */
+.participant-card.poker.me { /* turquoise-only */
+  border: 2px solid #22d3ee;
+  box-shadow: 0 10px 30px rgba(34,211,238,0.12);
+}
+.participant-card.poker.moderator { /* red-only */
+  border: 2px solid #ff5a5f;
+  box-shadow: 0 8px 22px rgba(255,90,95,0.08);
+}
+
+/* slightly more pronounced gray border for regular participants (not you, not moderator) */
+.participant-card.poker:not(.me):not(.moderator) {
+  border: 2px solid rgba(139, 141, 144, 0.18); /* gray-ish border */
+  box-shadow: 0 6px 14px rgba(16,24,40,0.04);
+ /* background: linear-gradient(180deg, #fbfbfc, #f6f7f8);  subtle muted bg */
+  transition: box-shadow .12s ease, border-color .12s ease, transform .12s ease;
+}
+.participant-card.poker:not(.me):not(.moderator):hover {
+  box-shadow: 0 10px 22px rgba(16,24,40,0.06);
+  transform: translateY(-2px);
+}
+
+/* Deal animation for selection cards */
+@keyframes deal {
+  0% {
+    transform: translateY(-36px) rotate(var(--start-rot, -6deg)) scale(.92);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(6px) rotate(calc(var(--start-rot, -6deg) * 0.2)) scale(1.03);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+}
+
+/* apply when grid/buttons have .dealt state */
+.cardBtn.poker.dealt {
+  /* allow per-button stagger via inline animation-delay */
+  animation-name: deal;
+  animation-duration: 480ms;
+  animation-timing-function: cubic-bezier(.2,.9,.3,1);
+  animation-fill-mode: both;
+  will-change: transform, opacity;
+}
+
+/* small polish so hover/active still looks good after deal */
+.cardBtn.poker.dealt:hover:not(:disabled) { transform: translateY(-6px) scale(1.02); }
