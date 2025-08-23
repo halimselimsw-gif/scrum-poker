@@ -4,8 +4,20 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Scrum Poker</title>
+<script>
+  // Eğer React tree tamamen kaybolursa kullanıcı boş index.html’de kalıyor.
+  // Bunu engellemek için, App.jsx'in "mode" state'ini localStorage'dan okuyup,
+  // yoksa fallback olarak root componenti yeniden yükletiyoruz.
+  window.addEventListener('DOMContentLoaded', () => {
+    const mode = localStorage.getItem('scrum-poker-mode');
+    if (!mode || mode === 'home') {
+      // Varsayılan: ana sayfa
+      window.history.replaceState({}, '', '/');
+    }
+  });
+</script>
 </head>
-<body>
+<body> 
 <div id="root"></div>
 <script type="module" src="/src/main.jsx"></script>
 </body>

@@ -32,6 +32,8 @@ ensureAuth().then(setUser)
 // persist name to localStorage whenever user edits it on the home/join screen
 useEffect(() => {
 try { localStorage.setItem('scrum-poker-name', name) } catch(e){}
+  try { localStorage.setItem('scrum-poker-mode', mode) } catch(e) {}
+
 }, [name])
 
 
@@ -39,17 +41,24 @@ const canJoin = useMemo(() => name.trim().length >= 2 && roomId.trim().length >=
 
 
 if(!user) return <div className="container"><div className="card">Signing in…</div></div>
+/*
+if (mode === 'room') {
+  return <Room roomId={roomId} name={name} onLeave={() => { setMode('home'); setRoomId(''); }} />;
+}*/
 
-if(mode === 'room'){
-    return <Room roomId={roomId} name={name} onLeave={() => { setMode('home'); setRoomId('') }} />
-  }
+if (mode === 'room' && roomId) {
+  return <Room roomId={roomId} name={name} onLeave={() => { 
+    setMode('home'); 
+    setRoomId('');
+  }} />;
+}
 
-  return (
+return (
     <div className="container">
       <div className="card">
         <div className="header">
           <h1>Scrum Poker</h1>
-          <span className="badge"> · Real-time</span>
+          <span className="badge"> · R-time</span>
         </div>
         <p className="kicker">Create a room, invite your team and estimate story points.</p>
 

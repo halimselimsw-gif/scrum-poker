@@ -41,6 +41,7 @@ export default function Room({ roomId, name, onLeave }) {
   const [myVote, setMyVote] = useState(null)
   const [loading, setLoading] = useState(true)
   const [dealt, setDealt] = useState(false)
+  const [timer, setTimer] = useState({ hours: 0, minutes: 0, seconds: 0 })
   const navigate = useNavigate()
   const roomRef = useMemo(() => ref(db, `rooms/${roomId}`), [roomId])
   const pRef = useMemo(() => user ? ref(db, `rooms/${roomId}/participants/${user.uid}`) : null, [roomId, user])
@@ -57,6 +58,11 @@ export default function Room({ roomId, name, onLeave }) {
     if (!user) return
 
     const onValueCallback = (snap) => {
+      if (!snap.exists()) {
+    // oda silinmiş (moderator leave yaptı)
+    onLeave()   // App.jsx’teki setMode('home') tetiklenecek
+    return
+  }
       const data = snap.val()
       setRoom(data)
       const currentVote = data?.participants?.[user.uid]?.vote ?? null
@@ -77,6 +83,15 @@ export default function Room({ roomId, name, onLeave }) {
           onLeave()
           //navigate('/') // ana sayfaya yönlendir
         }, 50)
+      }
+
+      // Eğer moderator odadan ayrıldıysa, diğer katılımcıları yönlendir
+      if (data && !data.owner && mounted) {
+        onLeave(); // Kullanıcıyı odadan çıkart
+        setTimeout(() => {
+          navigate('/'); // Ana sayfaya yönlendir
+          window.location.reload(); // Uygulamayı yeniden yükle
+        }, 100);
       }
     }
 
@@ -297,61 +312,106 @@ export default function Room({ roomId, name, onLeave }) {
     }
   }, [room?.state])
 
+  // Timer her saniye güncellenir
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimer((prev) => {
+        const totalSeconds = prev.hours * 3600 + prev.minutes * 60 + prev.seconds + 1;
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        return { hours, minutes, seconds };
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const calculateDeviation = (votes) => {
+    if (votes.length < 2) return [];
+
+    const numericVotes = votes
+      .map(v => parseFloat(v.replace('1/2', '0.5')))
+      .filter(v => !isNaN(v));
+
+    const avg = numericVotes.reduce((a, b) => a + b, 0) / numericVotes.length;
+    const deviations = numericVotes.map(v => Math.abs(v - avg));
+    const maxDeviation = Math.max(...deviations);
+
+    return numericVotes.map((v, i) => deviations[i] === maxDeviation && deviations[i] > avg * 0.5);
+  };
+
+  const deviations = useMemo(() => calculateDeviation(votes), [votes]);
+
   if(loading) return <div className="container"><div className="card">Loading room…</div></div>
+  // room nesnesi null ise kullanıcıyı ana sayfaya yönlendir
+  if (!room) {
+    setTimeout(() => navigate('/'), 100); // Ana sayfaya yönlendir
+    return null; // Bileşeni render etme
+  }
 
   return (
     <div className="container">
       <div className="card">
+        <div className="timer">
+        <span>{timer.hours.toString().padStart(2, '0')}:</span>
+        <span>{timer.minutes.toString().padStart(2, '0')}:</span>
+        <span>{timer.seconds.toString().padStart(2, '0')}</span>
+      </div>
         <div className="header">
-          <div>
-            <div className="small">Room</div>
-            <div className="copy" style={{fontSize:20}}>{roomId}</div>
-
-           <div style={{height:8}} />
-           <div className="small">Host</div>
-           <div style={{padding:'8px 0'}}>
-             {/* show only moderator (owner) name here */}
-             <div style={{fontSize:14, fontWeight:700}}>
-               {room?.owner ? (room?.participants?.[room.owner]?.name || room.owner) : '—'}
-             </div>
-           </div>
+          
+          <div className="room-info">
+            <div className="small">Room :</div>
+            <div className="copy" style={{ fontSize: 20 }}>{roomId}</div>
+            
           </div>
-
-          <div className="footer">
+          <div className="status-info">
+            <div className="small">Scrum master :</div>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>
+              {room?.owner ? (room?.participants?.[room.owner]?.name || room.owner) : '—'}
+            </div>
+            <div className="small">Status :</div>
+            <span className="badge">{room?.state === 'voting' ? 'Voting' : 'Revealed'}</span>
+            <div className="actions" style={{ paddingLeft: '36px' }}>
             <button className="btn" onClick={() => { navigator.clipboard.writeText(roomId) }}>Copy Code</button>
             <button
               className="btn"
               onClick={async () => {
-                onLeave()
+                onLeave();
                 try {
                   if (isModerator) {
-                     remove(roomRef)
+                    remove(roomRef);
                   } else {
-                     remove(ref(db, `rooms/${roomId}/participants/${user.uid}`))
+                    remove(ref(db, `rooms/${roomId}/participants/${user.uid}`));
                   }
-                } catch (e) { console.error(e) }
-                
-                //navigate('/') // navigate to home
+
+                   setTimeout(() => {
+                      window.location.href = "/"
+                    }, 100)
+                } catch (e) {
+                  console.error(e);
+                }
               }}
             >
               Leave
             </button>
           </div>
+          </div>
+          
         </div>
 
         <div className="row" style={{alignItems:'center', justifyContent:'space-between'}}>
           <input className="input" placeholder="Story title (optional)" value={room?.story || ''} onChange={e=> setStory(e.target.value)} />
-          <span className="badge">Status: {room?.state === 'voting' ? 'Voting' : 'Revealed'}</span>
         </div>
 
         <div style={{height:16}}/>
         <div>
           <div className="small" style={{marginBottom:8}}>Participants</div>
           <div className="row">
-            {participants.map(p => {
-              const voted = !!p.vote
-              const isMe = user && p.uid === user.uid
-              const AVATAR = avatarFor(p.uid)
+            {participants.map((p, i) => { // `i` indeksini ekledim
+              const voted = !!p.vote;
+              const isMe = user && p.uid === user.uid;
+              const AVATAR = avatarFor(p.uid);
               return (
                 <div
                   key={p.uid}
@@ -372,6 +432,9 @@ export default function Room({ roomId, name, onLeave }) {
                      <div className="p-name">
                        {p.name || 'Anonymous'}
                        {isMe && <span className="me-badge" aria-hidden> You</span>}
+                       {room?.state === 'revealed' && deviations[i] && (
+                        <span className="surprise-icon" title="Outlier">😲</span>
+                      )}
                      </div>
                     <div className="p-status">{voted ? '✅ Voted' : '⏳ Waiting'}</div>
                    </div>
@@ -430,15 +493,17 @@ export default function Room({ roomId, name, onLeave }) {
             <div className="small" style={{marginBottom:8}}>Results</div>
             <div className="row">
               {averageVote && (
-                <div className="participant" style={{flex:'1 1 140px'}}>
+                <div className="participant" style={{flex:'1 1 40px'}}>
                   <div>Average: {averageVote.avg}</div>
-                  <div style={{fontWeight:700}}>Rounded: {averageVote.rounded}</div>
+                  <div style={{fontWeight:500}}>Rounded: {averageVote.rounded}</div>
                 </div>
               )}
             </div>
           </div>
         )}
       </div>
+
+      
     </div>
   )
 }

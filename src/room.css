@@ -350,7 +350,7 @@
 .participant-card.poker.moderator.me .me-badge {
   background: #ff4b4b;
   color: #fff;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+  box-shadow: 0 2px 6px rgba(112, 2, 2, 0.18);
 }
 
 /* fallback styles keep working */
@@ -403,3 +403,53 @@
 
 /* small polish so hover/active still looks good after deal */
 .cardBtn.poker.dealt:hover:not(:disabled) { transform: translateY(-6px) scale(1.02); }
+/* Room sayfasını tek ekrana sığacak şekilde responsive yap */
+.container {
+  display: block;
+  height: auto; /* Yüksekliği içeriğe göre ayarla */
+  margin-top: 0; /* Sayfayı yukarıda sabit tut */
+  overflow-y: auto; /* Taşmayı önle */
+}
+
+/* Room bilgisi, host ve status bilgilerini aynı satıra hizala */
+.header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header .room-info,
+.header .status-info {
+  display: flex;
+  
+  align-items: center;
+  gap: 16px; /* Aralarındaki boşluk */
+}
+
+/* Sayaç sağ üstte konumlandırıldı */
+.timer {
+  
+  font-size: 16px;
+  font-weight: bold;
+  flex-direction: row;
+  color: #ff5a5f;
+  display: flex;
+  gap: 4px;
+}
+
+
+/* Status bilgisini sağa fazla boşluklu ekle */
+.header .status-info {
+  margin-left: auto; /* Sağ tarafa it */
+  /*padding-right: 20px; *//* Fazladan boşluk ekle */
+}
+
+/* Şaşırma ikonu için stil güncellemesi */
+.surprise-icon {
+  margin-left: 8px;
+  font-size: 2.9em; /* Daha büyük boyut */
+  color: orange;
+  display: block; /* İsmin üstüne taşımak için */
+  margin-bottom: 4px; /* İsmin üstünde biraz boşluk bırak */
+}
