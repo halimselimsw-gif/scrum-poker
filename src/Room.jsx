@@ -432,8 +432,8 @@ export default function Room({ roomId, name, onLeave }) {
                      <div className="p-name">
                        {p.name || 'Anonymous'}
                        {isMe && <span className="me-badge" aria-hidden> You</span>}
-                       {room?.state === 'revealed' && deviations[i] && (
-                        <span className="surprise-icon" title="Outlier">😲</span>
+                       {room?.state === 'revealed' && (deviations[i] || ['?', '♾'].includes(p.vote)) && (
+                        <span className="surprise-icon" title="Confused">😲</span>
                       )}
                      </div>
                     <div className="p-status">{voted ? '✅ Voted' : '⏳ Waiting'}</div>
