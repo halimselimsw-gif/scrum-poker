@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ref, onValue, set, update, get, remove, onDisconnect, off, runTransaction } from 'firebase/database'
 import { db, ensureAuth } from './firebase'
 import './room.css'
-const CARDS = ['0','1/2','1','2','3','5','8','13','20','40','100','?','♾']
+const CARDS = ['0','1/2','1','2','3','5','8','13','20','40','100','?','♾','Cafe']
 
 // avatar havuzu (10 adet). İsterseniz emoji'leri değiştirin.
 const AVATAR_POOL = ['🦊','🦄','🐝','🐙','🐯','🐼','🦁','🐵','🦉','🐸']
@@ -422,9 +422,19 @@ export default function Room({ roomId, name, onLeave }) {
                   <div className={`card-visual ${room?.state === 'revealed' ? 'flipped' : ''}`} aria-hidden>
                     <div className="card-side card-back" />
                     <div className="card-side card-front">
-                      <div className="card-value">
-                        {/* show actual vote only after reveal */}
-                        { room?.state === 'revealed' ? (p.vote || '-') : '' }
+                      <div className="card-border">
+                        <div className="card-value">
+                          { room?.state === 'revealed' ? (
+                            p.vote === 'Cafe' ? (
+                              <div className="pause-cafe">
+                                <div className="pause-title">Pause Cafe</div>
+                                <div className="pause-icon">☕</div>
+                              </div>
+                            ) : (
+                              p.vote || '-'
+                            )
+                          ) : '' }
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -459,20 +469,24 @@ export default function Room({ roomId, name, onLeave }) {
           <div className="small" style={{marginBottom:8}}>Choose your card</div>
           <div className="grid">
             {CARDS.map((c, i) => {
-              // small alternating start rotation for nicer spread
-              const startRot = (i % 2 === 0) ? -8 : 8
+              const startRot = (i % 2 === 0) ? -8 : 8;
               return (
                 <button
                   key={c}
-                  className={`cardBtn poker ${myVote===c ? 'active':''} ${dealt ? 'dealt' : ''}`}
-                  onClick={()=>castVote(c)}
+                  className={`cardBtn poker ${myVote === c ? 'active' : ''} ${dealt ? 'dealt' : ''}`}
+                  onClick={() => castVote(c)}
                   disabled={room?.state !== 'voting'}
-                  aria-pressed={myVote===c}
+                  aria-pressed={myVote === c}
                   style={dealt ? { animationDelay: `${i * 70}ms`, ['--start-rot']: `${startRot}deg` } : undefined}
                 >
-                 <div className="poker-top">{c}</div>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 150" className="card-svg">
+        <rect x="0" y="0" width="100" height="150" rx="10" ry="10" fill="white" stroke="red" strokeWidth="2" />
+        <text x="50" y="75" fontSize="40" textAnchor="middle" fill="black" fontFamily="Arial">{c}</text>
+        <text x="10" y="20" fontSize="10" fill="black" fontFamily="Arial">{c}</text>
+        <text x="70" y="135" fontSize="10" fill="black" fontFamily="Arial">{c}</text>
+      </svg>
                 </button>
-              )
+              );
             })}
            </div>
         </div>

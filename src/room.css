@@ -121,6 +121,36 @@
   .cardBtn.poker .poker-top { font-size:16px; }
 }
 
+/* Styles for SVG-based cards */
+.card-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Adjust styles for Pause Cafe in participant cards */
+.participant-card .pause-cafe {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: Arial, sans-serif;
+  text-align: center;
+}
+.participant-card .pause-title {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+.participant-card .pause-icon {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+.participant-card .pause-subtitle {
+  font-size: 10px;
+  color: gray;
+}
+
 /* Participant card with cartoon-queen avatar */
 .participant-card {
   display:flex;
@@ -298,6 +328,23 @@
   color:#111;
   padding:6px;
   text-align:center;
+}
+
+/* Card front design */
+.card-front .card-border {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border: 2px solid red;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.card-front .card-value {
+  font-size: 48px;
+  font-weight: bold;
+  color: black;
 }
 
 /* flip animation: rotate the whole .card-visual container */
