@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ref, onValue, set, update, get, remove, onDisconnect, off, runTransaction } from 'firebase/database'
 import { db, ensureAuth } from './firebase'
 import './room.css'
+import { v4 as uuidv4 } from 'uuid'; // Import UUID library
 const CARDS = ['0','1','2','3','5','8','13','21','34', '55','89','?','♾','☕']
 
 // avatar havuzu (10 adet). İsterseniz emoji'leri değiştirin.
@@ -143,15 +144,23 @@ export default function Room({ roomId, name, onLeave }) {
   }
 
   const reveal = async () => update(roomRef, { state: 'revealed' })
+
   const reset = async () => {
-    const updates = {}
-    Object.keys(room?.participants || {}).forEach(uid => { updates [`participants/${uid}/vote`] = null })
-    updates ['state'] = 'voting'
-    await update(roomRef, updates)
-    setMyVote(null)
-    // replay deal animation so selection cards appear like a fresh deal
-    try { triggerDeal() } catch(e) {}
-  }
+    const updates = {};
+    Object.keys(room?.participants || {}).forEach(uid => {
+      updates[`participants/${uid}/vote`] = null;
+    });
+    updates['state'] = 'voting';
+    updates['resetEvent'] = uuidv4(); // Generate a unique event ID
+    try {
+      await update(roomRef, updates);
+      console.log('Reset triggered successfully with event ID:', updates['resetEvent']); // Debugging log
+    } catch (error) {
+      console.error('Failed to trigger reset:', error); // Debugging log
+    }
+    setMyVote(null);
+  };
+
   const setStory = async (story) => update(roomRef, { story })
 
   // Moderatör: ilk giren
@@ -290,27 +299,30 @@ export default function Room({ roomId, name, onLeave }) {
   // triggerDeal uses the dealt state declared earlier
   const triggerDeal = () => {
     // restart animation: brief reset then staggered anims play
-    setDealt(false)
+    setDealt(false);
     // small delay so CSS animation retriggers
-    const t1 = setTimeout(() => setDealt(true), 80)
-    const t2 = setTimeout(() => setDealt(false), 2200) // cleanup after animation
+    const t1 = setTimeout(() => setDealt(true), 150); // smoother delay
+    const t2 = setTimeout(() => setDealt(false), 2000); // shorter cleanup
     // return cleanup function for callers if needed
-    return () => { clearTimeout(t1); clearTimeout(t2) }
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }
 
-  // When user joins for the first time, play deal
-  useEffect(() => {
-    if (joined) {
-      triggerDeal()
-    }
-  }, [joined])
-
-  // When room goes back to 'voting' (e.g. after reset), replay deal animation
+  // Remove triggerDeal from useEffect
   useEffect(() => {
     if (room?.state === 'voting') {
-      triggerDeal()
+      setDealt(false); // Ensure dealt state resets
     }
   }, [room?.state])
+
+  useEffect(() => {
+    if (room?.resetEvent) {
+      console.log('Reset event detected, triggering deal animation'); // Debugging log
+      triggerDeal();
+    }
+  }, [room?.resetEvent])
 
   // Timer her saniye güncellenir
   useEffect(() => {

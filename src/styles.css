@@ -1,7 +1,7 @@
 :root { --bg:#23262d; --card:#282b32; --ink:#e5e7eb; --muted:#9ca3af; --accent:#22d3ee; }
 * { box-sizing: border-box; }
 body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background: var(--bg); color: var(--ink); }
-.container { max-width: 1160px; margin: 0 auto; padding: 14px; }
+.container { width: 100%; max-width: none; margin: 0; padding: 14px; }
 .card { background: var(--card); border: 1px solid #1f2937; border-radius: 16px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
 .row { display:flex; gap:12px; flex-wrap: wrap; }
 .input { width:100%; padding:12px 14px; border-radius: 12px; border:1px solid #374151; background:#0b1220; color:var(--ink); }
@@ -12,7 +12,7 @@ body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI,
 .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap:12px; }
 .cardBtn { display:flex; align-items:center; justify-content:center; height:64px; border-radius:12px; border:1px solid #334155; background:#989da5; cursor:pointer; }
 .cardBtn.active { outline:2px solid var(--accent); }
-.participant { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border:1px solid #1f2937; border-radius:10px; background:#0b1220; }
+.participant { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border:1px solid #1f2937; border-radius:10px; background:#191919; }
 .small { font-size:12px; color:var(--muted); }
 .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
 .kicker { color:var(--muted); font-size:14px; }
@@ -49,4 +49,32 @@ body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI,
 .cardBtn {
   background: linear-gradient(45deg, #0f172a, #1e293b);
   color: white;
+}
+
+@media (max-width: 768px) {
+  .card {
+    padding: 16px;
+  }
+
+  .row {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .input {
+    width: 90%;
+  }
+}
+
+@media (max-width: 480px) {
+  .btn {
+    font-size: 0.9em;
+    padding: 8px 12px;
+  }
+
+  .cardBtn {
+    width: 60px;
+    height: 90px;
+    font-size: 18px;
+  }
 }

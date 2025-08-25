@@ -1,3 +1,46 @@
+/* Remove container width limitation */
+#root {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+}
+
+/* Remove .container width limitation */
+.container {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .card {
+    padding: 1em;
+  }
+
+  .row {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .input {
+    width: 90%;
+  }
+}
+
+@media (max-width: 480px) {
+  h1 {
+    font-size: 1.5em;
+  }
+
+  .btn {
+    font-size: 0.9em;
+    padding: 0.5em 1em;
+  }
+}
+
 #root {
   max-width: 1480px;
   margin: 0 auto;

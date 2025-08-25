@@ -121,6 +121,40 @@
   .cardBtn.poker .poker-top { font-size:16px; }
 }
 
+/* Remove container width limitation */
+.room-container {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .cardBtn.poker {
+    --w: 80px;
+    --h: 120px;
+    font-size: 16px;
+  }
+
+  .btn {
+    font-size: 0.9em;
+    padding: 0.5em 1em;
+  }
+}
+
+@media (max-width: 480px) {
+  .cardBtn.poker {
+    --w: 60px;
+    --h: 90px;
+    font-size: 14px;
+  }
+
+  .btn {
+    font-size: 0.8em;
+    padding: 0.4em 0.8em;
+  }
+}
+
 /* Styles for SVG-based cards */
 .card-svg {
   width: 100%;
@@ -576,7 +610,7 @@
 /* Light Theme */
 .room-container.light {
   background-color: #ffffff;
-  color: #e5e3e3;
+  color: #ffffff;
 }
 
 /* Dark Theme */
@@ -688,4 +722,55 @@ input:checked + .slider {
 
 input:checked + .slider:before {
   transform: translateX(14px);
+}
+
+/* Participant card adjustments */
+.participant-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--card);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  min-width: 160px;
+  margin: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+.participant-card .avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  background: radial-gradient(circle at 30% 20%, #fff6, #0000);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.participant-card .p-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.participant-card .p-name {
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.participant-card .p-status {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.room-container.dark .participant-card {
+  background: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
