@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ref, onValue, set, update, get, remove, onDisconnect, off, runTransaction } from 'firebase/database'
 import { db, ensureAuth } from './firebase'
 import './room.css'
-const CARDS = ['0','1/2','1','2','3','5','8','13','20','40','100','?','♾','Cafe']
+const CARDS = ['0','1','2','3','5','8','13','21','34', '55','89','?','♾','☕']
 
 // avatar havuzu (10 adet). İsterseniz emoji'leri değiştirin.
 const AVATAR_POOL = ['🦊','🦄','🐝','🐙','🐯','🐼','🦁','🐵','🦉','🐸']
@@ -359,11 +359,9 @@ export default function Room({ roomId, name, onLeave }) {
         <span>{timer.seconds.toString().padStart(2, '0')}</span>
       </div>
         <div className="header">
-          
           <div className="room-info">
             <div className="small">Room :</div>
             <div className="copy" style={{ fontSize: 20 }}>{roomId}</div>
-            
           </div>
           <div className="status-info">
             <div className="small">Scrum master :</div>
@@ -372,7 +370,8 @@ export default function Room({ roomId, name, onLeave }) {
             </div>
             <div className="small">Status :</div>
             <span className="badge">{room?.state === 'voting' ? 'Voting' : 'Revealed'}</span>
-            <div className="actions" style={{ paddingLeft: '36px' }}>
+          </div>
+          <div className="actions">
             <button className="btn" onClick={() => { navigator.clipboard.writeText(roomId) }}>Copy Code</button>
             <button
               className="btn"
@@ -384,10 +383,9 @@ export default function Room({ roomId, name, onLeave }) {
                   } else {
                     remove(ref(db, `rooms/${roomId}/participants/${user.uid}`));
                   }
-
-                   setTimeout(() => {
-                      window.location.href = "/"
-                    }, 100)
+                  setTimeout(() => {
+                    window.location.href = "/"
+                  }, 100)
                 } catch (e) {
                   console.error(e);
                 }
@@ -396,8 +394,6 @@ export default function Room({ roomId, name, onLeave }) {
               Leave
             </button>
           </div>
-          </div>
-          
         </div>
 
         <div className="row" style={{alignItems:'center', justifyContent:'space-between'}}>
@@ -425,7 +421,7 @@ export default function Room({ roomId, name, onLeave }) {
                       <div className="card-border">
                         <div className="card-value">
                           { room?.state === 'revealed' ? (
-                            p.vote === 'Cafe' ? (
+                            p.vote === '☕' ? (
                               <div className="pause-cafe">
                                 <div className="pause-title">Pause Cafe</div>
                                 <div className="pause-icon">☕</div>
@@ -464,6 +460,41 @@ export default function Room({ roomId, name, onLeave }) {
           </div>
         </div>
 
+        <div style={{height:16}}/>
+        <div className="footer">
+          <div className="button-group">
+            {isModerator && room.state === 'voting' && (
+              <div className="button-container">
+                <button className="btn-circle" onClick={handleReveal}>
+                  <img src="/reveal-icon.svg" alt="Reveal" className="icon" />
+                </button>
+                <div className="button-label">Reveal</div>
+              </div>
+            )}
+            {isModerator && room.state === 'revealed' && (
+              <div className="button-container">
+                <button className="btn-circle" onClick={reset}>
+                  <img src="/reset-icon.svg" alt="Reset" className="icon" />
+                </button>
+                <div className="button-label">Restart</div>
+              </div>
+            )}
+          </div>
+          {room.state === 'revealed' && (
+            <div className="results">
+              <div className="small" style={{ marginBottom: 8 }}>Results</div>
+              <div className="row">
+                {averageVote && (
+                  <div className="participant" style={{ flex: '1 1 40px' }}>
+                    <div>Average: {averageVote.avg}</div>
+                    <div style={{ fontWeight: 500 }}>Rounded: {averageVote.rounded}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
         <div style={{height:20}}/>
         <div>
           <div className="small" style={{marginBottom:8}}>Choose your card</div>
@@ -491,30 +522,6 @@ export default function Room({ roomId, name, onLeave }) {
            </div>
         </div>
 
-        <div style={{height:16}}/>
-        <div className="footer">
-          {isModerator && room.state === 'voting' && (
-            <button className="btn primary" onClick={handleReveal}>Reveal</button>
-          )}
-          {isModerator && room.state === 'revealed' && (
-            <button className="btn" onClick={reset}>Reset</button>
-          )}
-          <span className="small">{allVoted ? 'Everyone voted.' : 'Waiting for votes…'}</span>
-        </div>
-
-        {room.state === 'revealed' && (
-          <div style={{marginTop:16}}>
-            <div className="small" style={{marginBottom:8}}>Results</div>
-            <div className="row">
-              {averageVote && (
-                <div className="participant" style={{flex:'1 1 40px'}}>
-                  <div>Average: {averageVote.avg}</div>
-                  <div style={{fontWeight:500}}>Rounded: {averageVote.rounded}</div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
 
       

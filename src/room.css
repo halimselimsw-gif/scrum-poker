@@ -128,6 +128,13 @@
   display: block;
 }
 
+/* Adjust icon size and centering */
+.icon {
+  width: 36px;
+  height: 36px;
+  margin: 0;
+}
+
 /* Adjust styles for Pause Cafe in participant cards */
 .participant-card .pause-cafe {
   display: flex;
@@ -464,6 +471,7 @@
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .header .room-info,
@@ -499,4 +507,68 @@
   color: orange;
   display: block; /* İsmin üstüne taşımak için */
   margin-bottom: 4px; /* İsmin üstünde biraz boşluk bırak */
+}
+
+/* Responsive styles for Room info and Leave button row */
+.actions {
+  display: flex;
+  gap: 10px;
+}
+.room-info, .status-info, .actions {
+  margin: 5px;
+}
+
+/* Styles for SVG icons in buttons */
+.icon {
+  width: 36px;
+  height: 36px;
+  margin: 0;
+}
+
+/* Styles for circular buttons */
+.btn-circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: #1e1e2f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+.btn-circle:hover {
+  background-color: #2a2a3f;
+}
+
+/* Container for button and label */
+.button-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 10px;
+}
+
+/* Label below the button */
+.button-label {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #fff;
+  text-align: center;
+}
+
+/* Position results to the right of buttons */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.button-group {
+  display: flex;
+  align-items: center;
+}
+.results {
+  margin-left: 10px;
+  flex-grow: 1;
 }
