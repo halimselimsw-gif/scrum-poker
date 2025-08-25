@@ -40,3 +40,39 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Light Theme */
+:root[data-theme='light'] {
+  --background-color: #ffffff;
+  --text-color: #000000;
+  --card-background: #f9f9f9;
+  --button-background: #007bff;
+  --button-text: #ffffff;
+}
+
+/* Dark Theme */
+:root[data-theme='dark'] {
+  --background-color: #121212;
+  --text-color: #ffffff;
+  --card-background: #1e1e1e;
+  --button-background: #bb86fc;
+  --button-text: #000000;
+}
+
+/* Apply Theme Variables */
+body {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.card {
+  background-color: var(--card-background);
+  transition: background-color 0.3s;
+}
+
+.btn {
+  background-color: var(--button-background);
+  color: var(--button-text);
+  transition: background-color 0.3s, color 0.3s;
+}

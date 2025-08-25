@@ -572,3 +572,120 @@
   margin-left: 10px;
   flex-grow: 1;
 }
+
+/* Light Theme */
+.room-container.light {
+  background-color: #ffffff;
+  color: #e5e3e3;
+}
+
+/* Dark Theme */
+.room-container.dark {
+  background-color: #121212;
+  color: #ffffff;
+}
+
+/* Transition for smooth theme change */
+.room-container {
+  transition: background-color 0.3s, color 0.3s;
+}
+
+/* Light Theme */
+.room-container.light .cardBtn.poker {
+  background: linear-gradient(180deg, #ffffff 0%, #f7f7f7 100%);
+  color: #000000;
+  border-color: rgba(0, 0, 0, 0.14);
+}
+
+/* Dark Theme */
+.room-container.dark .cardBtn.poker {
+  background: linear-gradient(180deg, #333333 0%, #444444 100%);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+/* Update other components */
+.room-container.light .btn {
+  background-color: #77787a;
+  color: #ffffff;
+}
+
+.room-container.dark .btn {
+  background-color: #1a1a1b;
+  color: #d1c9c9;
+}
+
+.room-container.light .header {
+  color: #e0dede;
+}
+
+.room-container.dark .header {
+  color: #ffffff;
+}
+
+/* Leave and Copy Code Buttons */
+.room-container.light .btn.leave {
+  background-color: #d3d3d3;
+  color: #d4cece;
+}
+
+.room-container.dark .btn.leave {
+  background-color: #4f4f4f;
+  color: #ffffff;
+}
+
+.room-container.light .btn.copy {
+  background-color: #d3d3d3;
+  color: #e1dcdc;
+}
+
+.room-container.dark .btn.copy {
+  background-color: #4f4f4f;
+  color: #ffffff;
+}
+
+/* Toggle Switch */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 34px;
+  height: 20px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.4s;
+  border-radius: 20px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #2196F3;
+}
+
+input:checked + .slider:before {
+  transform: translateX(14px);
+}

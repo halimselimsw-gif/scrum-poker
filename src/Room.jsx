@@ -343,6 +343,17 @@ export default function Room({ roomId, name, onLeave }) {
 
   const deviations = useMemo(() => calculateDeviation(votes), [votes]);
 
+  const theme = document.documentElement.getAttribute('data-theme');
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    try {
+      localStorage.setItem('scrum-poker-theme', newTheme);
+    } catch (e) {
+      console.error('Failed to save theme to localStorage', e);
+    }
+  };
+
   if(loading) return <div className="container"><div className="card">Loading room…</div></div>
   // room nesnesi null ise kullanıcıyı ana sayfaya yönlendir
   if (!room) {
@@ -351,180 +362,193 @@ export default function Room({ roomId, name, onLeave }) {
   }
 
   return (
-    <div className="container">
-      <div className="card">
-        <div className="timer">
-        <span>{timer.hours.toString().padStart(2, '0')}:</span>
-        <span>{timer.minutes.toString().padStart(2, '0')}:</span>
-        <span>{timer.seconds.toString().padStart(2, '0')}</span>
-      </div>
-        <div className="header">
-          <div className="room-info">
-            <div className="small">Room :</div>
-            <div className="copy" style={{ fontSize: 20 }}>{roomId}</div>
-          </div>
-          <div className="status-info">
-            <div className="small">Scrum master :</div>
-            <div style={{ fontSize: 14, fontWeight: 700 }}>
-              {room?.owner ? (room?.participants?.[room.owner]?.name || room.owner) : '—'}
+    <div className={`room-container ${theme}`}>
+      <div className="theme-switcher">
+      <label className="switch">
+        <input
+          type="checkbox"
+          checked={theme === 'dark'}
+          onChange={toggleTheme}
+        />
+        <span className="slider"></span>
+      </label>
+      <span>{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
+    </div>
+      <div className="container">
+        <div className="card">
+          <div className="timer">
+          <span>{timer.hours.toString().padStart(2, '0')}:</span>
+          <span>{timer.minutes.toString().padStart(2, '0')}:</span>
+          <span>{timer.seconds.toString().padStart(2, '0')}</span>
+        </div>
+          <div className="header">
+            <div className="room-info">
+              <div className="small">Room :</div>
+              <div className="copy" style={{ fontSize: 20 }}>{roomId}</div>
             </div>
-            <div className="small">Status :</div>
-            <span className="badge">{room?.state === 'voting' ? 'Voting' : 'Revealed'}</span>
-          </div>
-          <div className="actions">
-            <button className="btn" onClick={() => { navigator.clipboard.writeText(roomId) }}>Copy Code</button>
-            <button
-              className="btn"
-              onClick={async () => {
-                onLeave();
-                try {
-                  if (isModerator) {
-                    remove(roomRef);
-                  } else {
-                    remove(ref(db, `rooms/${roomId}/participants/${user.uid}`));
+            <div className="status-info">
+              <div className="small">Scrum master :</div>
+              <div style={{ fontSize: 14, fontWeight: 700 }}>
+                {room?.owner ? (room?.participants?.[room.owner]?.name || room.owner) : '—'}
+              </div>
+              <div className="small">Status :</div>
+              <span className="badge">{room?.state === 'voting' ? 'Voting' : 'Revealed'}</span>
+            </div>
+            <div className="actions">
+              <button className="btn" onClick={() => { navigator.clipboard.writeText(roomId) }}>Copy Code</button>
+              <button
+                className="btn"
+                onClick={async () => {
+                  onLeave();
+                  try {
+                    if (isModerator) {
+                      remove(roomRef);
+                    } else {
+                      remove(ref(db, `rooms/${roomId}/participants/${user.uid}`));
+                    }
+                    setTimeout(() => {
+                      window.location.href = "/"
+                    }, 100)
+                  } catch (e) {
+                    console.error(e);
                   }
-                  setTimeout(() => {
-                    window.location.href = "/"
-                  }, 100)
-                } catch (e) {
-                  console.error(e);
-                }
-              }}
-            >
-              Leave
-            </button>
+                }}
+              >
+                Leave
+              </button>
+            </div>
           </div>
-        </div>
 
-        <div className="row" style={{alignItems:'center', justifyContent:'space-between'}}>
-          <input className="input" placeholder="Story title (optional)" value={room?.story || ''} onChange={e=> setStory(e.target.value)} />
-        </div>
+          <div className="row" style={{alignItems:'center', justifyContent:'space-between'}}>
+            <input className="input" placeholder="Story title (optional)" value={room?.story || ''} onChange={e=> setStory(e.target.value)} />
+          </div>
 
-        <div style={{height:16}}/>
-        <div>
-          <div className="small" style={{marginBottom:8}}>Participants</div>
-          <div className="row">
-            {participants.map((p, i) => { // `i` indeksini ekledim
-              const voted = !!p.vote;
-              const isMe = user && p.uid === user.uid;
-              const AVATAR = avatarFor(p.uid);
-              return (
-                <div
-                  key={p.uid}
-                  className={`participant-card poker ${voted ? 'voted' : 'not-voted'} ${isMe ? 'me' : ''} ${room?.owner === p.uid ? 'moderator' : ''}`}
-                  aria-current={isMe}
-                >
-                  {/* flip only when room is revealed */}
-                  <div className={`card-visual ${room?.state === 'revealed' ? 'flipped' : ''}`} aria-hidden>
-                    <div className="card-side card-back" />
-                    <div className="card-side card-front">
-                      <div className="card-border">
-                        <div className="card-value">
-                          { room?.state === 'revealed' ? (
-                            p.vote === '☕' ? (
-                              <div className="pause-cafe">
-                                <div className="pause-title">Pause Cafe</div>
-                                <div className="pause-icon">☕</div>
-                              </div>
-                            ) : (
-                              p.vote || '-'
-                            )
-                          ) : '' }
+          <div style={{height:16}}/>
+          <div>
+            <div className="small" style={{marginBottom:8}}>Participants</div>
+            <div className="row">
+              {participants.map((p, i) => { // `i` indeksini ekledim
+                const voted = !!p.vote;
+                const isMe = user && p.uid === user.uid;
+                const AVATAR = avatarFor(p.uid);
+                return (
+                  <div
+                    key={p.uid}
+                    className={`participant-card poker ${voted ? 'voted' : 'not-voted'} ${isMe ? 'me' : ''} ${room?.owner === p.uid ? 'moderator' : ''}`}
+                    aria-current={isMe}
+                  >
+                    {/* flip only when room is revealed */}
+                    <div className={`card-visual ${room?.state === 'revealed' ? 'flipped' : ''}`} aria-hidden>
+                      <div className="card-side card-back" />
+                      <div className="card-side card-front">
+                        <div className="card-border">
+                          <div className="card-value">
+                            { room?.state === 'revealed' ? (
+                              p.vote === '☕' ? (
+                                <div className="pause-cafe">
+                                  <div className="pause-title">Pause Cafe</div>
+                                  <div className="pause-icon">☕</div>
+                                </div>
+                              ) : (
+                                p.vote || '-'
+                              )
+                            ) : '' }
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                   <div className="p-info">
-                     <div className="p-name">
-                       {p.name || 'Anonymous'}
-                       {isMe && <span className="me-badge" aria-hidden> You</span>}
-                       {room?.state === 'revealed' && (deviations[i] || ['?', '♾'].includes(p.vote)) && (
-                        <span className="surprise-icon" title="Confused">😲</span>
-                      )}
+                     <div className="p-info">
+                       <div className="p-name">
+                         {p.name || 'Anonymous'}
+                         {isMe && <span className="me-badge" aria-hidden> You</span>}
+                         {room?.state === 'revealed' && (deviations[i] || ['?', '♾'].includes(p.vote)) && (
+                          <span className="surprise-icon" title="Confused">😲</span>
+                        )}
+                       </div>
+                      <div className="p-status">{voted ? '✅ Voted' : '⏳ Waiting'}</div>
                      </div>
-                    <div className="p-status">{voted ? '✅ Voted' : '⏳ Waiting'}</div>
+                     {isModerator && user?.uid !== p.uid && (
+                       <button
+                         className="kick-btn"
+                         onClick={() => kickParticipant(p.uid)}
+                         title="Kick participant"
+                         aria-label={`Kick ${p.name || 'participant'}`}
+                       >
+                         X
+                       </button>
+                     )}
                    </div>
-                   {isModerator && user?.uid !== p.uid && (
-                     <button
-                       className="kick-btn"
-                       onClick={() => kickParticipant(p.uid)}
-                       title="Kick participant"
-                       aria-label={`Kick ${p.name || 'participant'}`}
-                     >
-                       X
-                     </button>
-                   )}
-                 </div>
-               )
-             })}
-          </div>
-        </div>
-
-        <div style={{height:16}}/>
-        <div className="footer">
-          <div className="button-group">
-            {isModerator && room.state === 'voting' && (
-              <div className="button-container">
-                <button className="btn-circle" onClick={handleReveal}>
-                  <img src="/reveal-icon.svg" alt="Reveal" className="icon" />
-                </button>
-                <div className="button-label">Reveal</div>
-              </div>
-            )}
-            {isModerator && room.state === 'revealed' && (
-              <div className="button-container">
-                <button className="btn-circle" onClick={reset}>
-                  <img src="/reset-icon.svg" alt="Reset" className="icon" />
-                </button>
-                <div className="button-label">Restart</div>
-              </div>
-            )}
-          </div>
-          {room.state === 'revealed' && (
-            <div className="results">
-              <div className="small" style={{ marginBottom: 8 }}>Results</div>
-              <div className="row">
-                {averageVote && (
-                  <div className="participant" style={{ flex: '1 1 40px' }}>
-                    <div>Average: {averageVote.avg}</div>
-                    <div style={{ fontWeight: 500 }}>Rounded: {averageVote.rounded}</div>
-                  </div>
-                )}
-              </div>
+                 )
+               })}
             </div>
-          )}
-        </div>
+          </div>
 
-        <div style={{height:20}}/>
-        <div>
-          <div className="small" style={{marginBottom:8}}>Choose your card</div>
-          <div className="grid">
-            {CARDS.map((c, i) => {
-              const startRot = (i % 2 === 0) ? -8 : 8;
-              return (
-                <button
-                  key={c}
-                  className={`cardBtn poker ${myVote === c ? 'active' : ''} ${dealt ? 'dealt' : ''}`}
-                  onClick={() => castVote(c)}
-                  disabled={room?.state !== 'voting'}
-                  aria-pressed={myVote === c}
-                  style={dealt ? { animationDelay: `${i * 70}ms`, ['--start-rot']: `${startRot}deg` } : undefined}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 150" className="card-svg">
+          <div style={{height:16}}/>
+          <div className="footer">
+            <div className="button-group">
+              {isModerator && room.state === 'voting' && (
+                <div className="button-container">
+                  <button className="btn-circle" onClick={handleReveal}>
+                    <img src="/reveal-icon.svg" alt="Reveal" className="icon" />
+                  </button>
+                  <div className="button-label">Reveal</div>
+                </div>
+              )}
+              {isModerator && room.state === 'revealed' && (
+                <div className="button-container">
+                  <button className="btn-circle" onClick={reset}>
+                    <img src="/reset-icon.svg" alt="Reset" className="icon" />
+                  </button>
+                  <div className="button-label">Restart</div>
+                </div>
+              )}
+            </div>
+            {room.state === 'revealed' && (
+              <div className="results">
+                <div className="small" style={{ marginBottom: 8 }}>Results</div>
+                <div className="row">
+                  {averageVote && (
+                    <div className="participant" style={{ flex: '1 1 40px' }}>
+                      <div>Average: {averageVote.avg}</div>
+                      <div style={{ fontWeight: 500 }}>Rounded: {averageVote.rounded}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div style={{height:20}}/>
+          <div>
+            <div className="small" style={{marginBottom:8}}>Choose your card</div>
+            <div className="grid">
+              {CARDS.map((c, i) => {
+                const startRot = (i % 2 === 0) ? -8 : 8;
+                return (
+                  <button
+                    key={c}
+                    className={`cardBtn poker ${myVote === c ? 'active' : ''} ${dealt ? 'dealt' : ''}`}
+                    onClick={() => castVote(c)}
+                    disabled={room?.state !== 'voting'}
+                    aria-pressed={myVote === c}
+                    style={dealt ? { animationDelay: `${i * 70}ms`, ['--start-rot']: `${startRot}deg` } : undefined}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 150" className="card-svg">
         <rect x="0" y="0" width="100" height="150" rx="10" ry="10" fill="white" stroke="red" strokeWidth="2" />
         <text x="50" y="75" fontSize="40" textAnchor="middle" fill="black" fontFamily="Arial">{c}</text>
         <text x="10" y="20" fontSize="10" fill="black" fontFamily="Arial">{c}</text>
         <text x="70" y="135" fontSize="10" fill="black" fontFamily="Arial">{c}</text>
       </svg>
-                </button>
-              );
-            })}
-           </div>
+                  </button>
+                );
+              })}
+             </div>
+          </div>
+
         </div>
 
+        
       </div>
-
-      
     </div>
   )
 }

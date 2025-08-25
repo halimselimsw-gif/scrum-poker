@@ -40,6 +40,29 @@ try { localStorage.setItem('scrum-poker-name', name) } catch(e){}
 const canJoin = useMemo(() => name.trim().length >= 2 && roomId.trim().length >= 4, [name, roomId])
 
 
+const [theme, setTheme] = useState(() => {
+  try {
+    const savedTheme = localStorage.getItem('scrum-poker-theme');
+    return savedTheme || 'light';
+  } catch (e) {
+    return 'light';
+  }
+});
+
+useEffect(() => {
+  document.documentElement.setAttribute('data-theme', theme);
+  try {
+    localStorage.setItem('scrum-poker-theme', theme);
+  } catch (e) {
+    console.error('Failed to save theme to localStorage', e);
+  }
+}, [theme]);
+
+const toggleTheme = () => {
+  setTheme((prevTheme) => (prevTheme === 'dark' ? 'light' : 'dark'));
+};
+
+
 if(!user) return <div className="container"><div className="card">Signing in…</div></div>
 /*
 if (mode === 'room') {
@@ -59,6 +82,9 @@ return (
         <div className="header">
           <h1>Scrum Poker</h1>
           <span className="badge"> · R-time</span>
+          <button className="btn" onClick={toggleTheme}>
+    Switch to {theme === 'light' ? 'Dark' : 'Light'} Mode
+  </button>
         </div>
         <p className="kicker">Create a room, invite your team and estimate story points.</p>
 
