@@ -428,6 +428,8 @@
     0 0 0 6px rgba(255,75,75,0.14),        /* outer red ring */
     0 10px 30px rgba(255,75,75,0.18);      /* red lift for prominence */
 
+
+
   /* tiny blended background so both colors read together */
   background: linear-gradient(180deg, rgba(255,75,75,0.02), rgba(34,211,238,0.02));
   transform: translateY(-2px);
@@ -445,10 +447,15 @@
 .participant-card.poker.me { /* turquoise-only */
   border: 2px solid #22d3ee;
   box-shadow: 0 10px 30px rgba(34,211,238,0.12);
+  box-shadow: 0 0 0 3px rgba(34,211,238,0.20) inset, 
+    0 0 0 6px rgba(75, 210, 255, 0.14),        
+    0 10px 30px rgba(75, 201, 255, 0.18);
 }
 .participant-card.poker.moderator { /* red-only */
   border: 2px solid #ff5a5f;
-  box-shadow: 0 8px 22px rgba(255,90,95,0.08);
+  box-shadow: 0 0 0 3px rgba(255,90,95,0.08) inset, 
+    0 0 0 6px rgba(255,90,95,0.08),        
+    0 10px 30px rgba(255,90,95,0.08);
 }
 
 /* slightly more pronounced gray border for regular participants (not you, not moderator) */
@@ -609,7 +616,7 @@
 
 /* Light Theme */
 .room-container.light {
-  background-color: #ffffff;
+  background-color: #23262d;
   color: #ffffff;
 }
 
@@ -768,9 +775,4 @@ input:checked + .slider:before {
 .participant-card .p-status {
   color: var(--muted);
   font-size: 12px;
-}
-
-.room-container.dark .participant-card {
-  background: #1e1e1e;
-  border: 1px solid rgba(255, 255, 255, 0.1);
 }
