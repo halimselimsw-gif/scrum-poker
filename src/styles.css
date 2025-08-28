@@ -1,0 +1,170 @@
+.root-light, :root { --bg:#c8c8c8; --card:#fbfcfd; --ink:#0f172a; --muted:#64748b; --accent:#0ea5e9; }
+
+/* Dark theme: softer gray-black (not pure black) for reduced contrast */
+[data-theme="dark"] {
+  --bg: #1f2226; /* dark gray-black background */
+  --card: #27282c; /* slightly lighter card surface */
+  --ink: #e6eef6; /* readable light text */
+  --muted: #9aa3ad;
+  --accent: #22d3ee;
+}
+* { box-sizing: border-box; }
+html, body, #root {
+  height: 100%;
+}
+body { margin:0; min-height:100vh; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background: var(--bg); color: var(--ink); }
+
+/* Ensure the room container spans the full viewport so background covers whole page */
+.room-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.room-container > .container {
+  flex: 1 0 auto;
+}
+.card h1, .card h2, .header h1, .header h2 { color: var(--ink); }
+.badge { color: var(--muted); background: transparent; }
+.container { width: 100%; max-width: none; margin: 0; padding: 14px; }
+.card { background: var(--card); border: 1px solid rgba(15,23,42,0.06); border-radius: 16px; padding: 20px; box-shadow: 0 6px 20px rgba(2,6,23,0.06); }
+.row { display:flex; gap:12px; flex-wrap: wrap; }
+.input { width:100%; padding:12px 14px; border-radius: 12px; border:1px solid rgba(15,23,42,0.08); background: #f8fafb; color:var(--ink); }
+.input::placeholder { color: rgba(15,23,42,0.45); }
+.btn { padding:6px 12px; border-radius:12px; border:1px solid rgba(15,23,42,0.08); background: #ffffff; color:var(--ink); cursor:pointer; }
+.btn:hover { border-color:rgba(15,23,42,0.14); }
+.btn.primary { background: linear-gradient(135deg, #0ea5e9, #22d3ee); color:#00111a; border:none; }
+.badge { border:1px solid rgba(15,23,42,0.06); padding:6px 10px; border-radius:999px; font-size:12px; color:var(--muted); background: rgba(15,23,42,0.02); }
+.grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap:18px; }
+.cardBtn { display:flex; align-items:center; justify-content:center; height:64px; border-radius:12px; border:1px solid rgba(2,6,23,0.06); background: linear-gradient(180deg,#ffffff,#f1f5f9); cursor:pointer; color:var(--ink); }
+.cardBtn.active { outline:2px solid var(--accent); box-shadow: 0 6px 18px rgba(14,165,233,0.12); }
+.participant { display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border:1px solid rgba(2,6,23,0.04); border-radius:8px; background: #ffffff; }
+
+/* participant-card used in Room.jsx for participant tiles -- keep compact */
+.participant-card { display:flex; align-items:center; gap:6px; padding:4px 6px; border-radius:8px; border:1px solid rgba(2,6,23,0.04); background: #ffffff; width:120px; max-width:125px; flex: 0 0 160px; }
+.participant-card .p-info { display:flex; flex-direction:column; min-width:0; }
+.participant-card .p-name { font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:90px; }
+.participant-card .p-status { font-size:12px; color:var(--muted); }
+/* Make voted participants more prominent */
+.participant-card.voted {
+  background: linear-gradient(90deg, rgba(34,210,238,0.06), rgba(16,185,129,0.02));
+  border-color: rgba(16,185,129,0.12);
+  box-shadow: 0 6px 14px rgba(16,185,129,0.06);
+}
+.participant-card.voted .p-status {
+  font-size:16px;
+  font-weight:700;
+  color: #059669; /* green */
+}
+.participant-card.not-voted .p-status {
+  font-size:13px;
+  color: var(--muted);
+}
+.small { font-size:12px; color:var(--muted); }
+.header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+.kicker { color:var(--muted); font-size:14px; }
+.footer { display:flex; gap:8px; flex-wrap: wrap; }
+.copy { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas; }
+@media (max-width:600px){ .grid{ grid-template-columns: repeat(3, 1fr);} }
+.cardBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 120px;
+  border-radius: 12px;
+  border: 1px solid #333;
+  background: white;
+  color: black;
+  font-size: 24px;
+  font-weight: bold;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.cardBtn:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+}
+
+.cardBtn.active {
+  border: 3px solid #0ea5e9;
+  box-shadow: 1px 8px 20px rgba(0,165,233,0.5);
+}
+
+.cardBtn {
+  background: linear-gradient(45deg, #0f172a, #1e293b);
+  color: white;
+}
+
+/* Make sure the active highlight is visible immediately (including while focused) */
+.cardBtn.active,
+.cardBtn.active:focus,
+.cardBtn.active:active {
+  border: 3px solid #0ea5e9 !important;
+  box-shadow: 0 10px 26px rgba(14,165,233,0.45) !important;
+  outline: none !important;
+}
+
+/* Lift selected card immediately on click (same effect as hover) */
+.cardBtn.active,
+.cardBtn:active,
+.cardBtn.active:active,
+.cardBtn.active:focus {
+  transform: translateY(-26px) !important;
+  transition: transform 0.12s ease, box-shadow 0.12s ease !important;
+  z-index: 10 !important;
+}
+
+@media (max-width: 768px) {
+  .card {
+    padding: 16px;
+  }
+
+  .row {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .input {
+    width: 90%;
+  }
+}
+
+@media (max-width: 480px) {
+  .btn {
+    font-size: 0.9em;
+    padding: 8px 12px;
+  }
+
+  .cardBtn {
+    width: 60px;
+    height: 90px;
+    font-size: 18px;
+  }
+}
+
+/* Placeholder and element contrast for dark theme */
+[data-theme="dark"] .input::placeholder { color: rgba(0, 0, 0, 0.45); }
+[data-theme="dark"] .badge { color: var(--muted); }
+[data-theme="dark"] .header h1 { color: var(--ink); }
+
+/* In dark mode, make buttons use the disabled-button color tokens for consistent subdued appearance */
+[data-theme="dark"] button,
+[data-theme="dark"] .btn,
+[data-theme="dark"] .cardBtn {
+  color: var(--bs-btn-disabled-color);
+  background-color: var(--bs-btn-disabled-bg);
+  border-color: var(--bs-btn-disabled-border-color);
+}
+
+/* Light mode: use Bootstrap disabled-button color tokens for a muted button look, with explicit dark border */
+:root button,
+:root .btn,
+:root .cardBtn {
+  color: var(--bs-btn-disabled-color);
+  background-color: var(--bs-btn-disabled-bg);
+  border-color: #121313;
+}

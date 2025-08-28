@@ -1,0 +1,16 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="100"
+  height="100"
+  viewBox="0 0 100 100"
+>
+  <!-- Kapı -->
+  <rect x="60" y="20" width="30" height="60" fill="#4caf50" rx="5"></rect>
+  <circle cx="80" cy="50" r="3" fill="white"></circle>
+  
+  <!-- Ok -->
+  <path
+    d="M40 50 L60 35 L60 45 L80 45 L80 55 L60 55 L60 65 Z"
+    fill="#4caf50"
+  ></path>
+</svg>
