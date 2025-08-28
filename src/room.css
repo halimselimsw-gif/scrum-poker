@@ -1,8 +1,8 @@
 /* Poker-styled card buttons */
 .cardBtn.poker {
   position: relative;
-  --w: 96px;
-  --h: 140px;
+  --w: 85px;
+  --h: 130px;
   width: var(--w);
   height: var(--h);
   padding: 8px;
@@ -769,10 +769,11 @@
 .room-container.dark .btn-circle:hover,
 .room-container.dark .btn-circle:focus {
   transform: translateY(-4px);
-  box-shadow: 0 18px 40px rgba(255,255,255,0.30),
+  box-shadow: 0 18px 40px rgba(255,255,255,0.30)
               inset 0 6px 18px rgba(255,255,255,0.12),
               0 0 0 4px rgba(255,255,255,0.04);
   outline: none;
+  background-color: #333131 !important;
 }
 
 /* Dark-mode: style the inline SVG cards used in "Choose your card" */
@@ -800,7 +801,7 @@
 }
 
 /* Theme switcher (sun / moon) */
-.theme-switcher { display:flex; align-items:center; gap:10px; padding: 1px;}
+.theme-switcher { display:flex; align-items:center; gap:10px; padding: 3px;}
 .theme-switcher .theme-label { font-size:14px; color:#dddfe3; }
 
 .switch {
@@ -808,7 +809,7 @@
   display: inline-flex;
   align-items: center;
   width: 72px;
-  height: 32px;
+  height: 28px;
   border-radius: 999px;
   background: linear-gradient(180deg, #eef2f7, #e6ecf3);
   box-shadow: 0 4px 10px rgba(2,6,23,0.06);
@@ -825,7 +826,7 @@
   border-radius: 999px;
 }
 
-.switch .icon { display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; opacity:1; transition: color .18s, transform .28s, opacity .2s; }
+.switch .icon { display:inline-flex; align-items:center; justify-content:center; width:34px; height:24px; opacity:1; transition: color .18s, transform .28s, opacity .2s; }
 .switch .icon.sun { color: #FFD54A; } /* brighter yellow sun */
 .switch .icon.moon { color: #0b0b0b; } /* near-black moon */
 
@@ -835,11 +836,10 @@
   position: absolute;
   top: 1px;
   left: 4px;
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   background: radial-gradient(circle at 30% 30%, #ffffff, #f3f4f6);
   border-radius: 50%;
-  box-shadow: 0 6px 18px rgba(2,6,23,0.12);
   transition: transform 280ms cubic-bezier(.2,.9,.3,1), background .18s ease, left .28s ease;
   box-shadow : 0 10px 28px rgba(3, 10, 18, 0.12), inset 0 1px 0 rgba(5, 5, 5, 0.6);
 }
