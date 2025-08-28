@@ -32,7 +32,7 @@ body { margin:0; min-height:100vh; font-family: ui-sans-serif, system-ui, -apple
 .row { display:flex; gap:12px; flex-wrap: wrap; }
 .input { width:100%; padding:12px 14px; border-radius: 12px; border:1px solid rgba(15,23,42,0.08); background: #d2d2d263; color:var(--ink); }
 .input::placeholder { color: rgba(15,23,42,0.45); }
-.btn { padding:6px 12px; border-radius:12px; border:1px solid rgba(15,23,42,0.08); background: #ffffff; color:var(--ink); cursor:pointer; }
+.btn { padding:4px 12px; border-radius:12px; border:1px solid rgba(15,23,42,0.08); background: #ffffff; color:var(--ink); cursor:pointer; }
 .btn:hover { border-color:rgba(15,23,42,0.14); }
 .btn.primary { background: linear-gradient(135deg, #0ea5e9, #22d3ee); color:#00111a; border:none; }
 .badge { border:1px solid rgba(15,23,42,0.06); padding:6px 10px; border-radius:999px; font-size:12px; color:var(--muted); background: rgba(15,23,42,0.02); }

@@ -81,7 +81,15 @@ useEffect(() => {
 }, [theme]);
 
 const toggleTheme = () => {
+  // Temporarily disable CSS transitions to make the theme flip feel instantaneous
+  try {
+    document.documentElement.classList.add('disable-transitions');
+  } catch (e) {}
   setTheme((prevTheme) => (prevTheme === 'dark' ? 'light' : 'dark'));
+  // Re-enable transitions shortly after
+  setTimeout(() => {
+    try { document.documentElement.classList.remove('disable-transitions'); } catch (e) {}
+  }, 60);
 };
 
   // helper for theme-aware button styles

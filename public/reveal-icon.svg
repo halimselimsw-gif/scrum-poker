@@ -1,4 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-  <circle cx="12" cy="12" r="3" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" role="img" aria-label="Reveal">
+  <!-- Outer ring -->
+  <circle cx="100" cy="100" r="92" fill="#e2554a" />
+  <!-- thin white ring -->
+  <circle cx="100" cy="100" r="82" fill="#ffffff" />
+  <!-- inner red circle to create double-ring look -->
+  <circle cx="100" cy="100" r="70" fill="#e2554a" />
+  <!-- centered rounded square -->
+  <rect x="70" y="70" width="60" height="60" rx="12" ry="12" fill="#ffffff" />
 </svg>

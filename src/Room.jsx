@@ -623,15 +623,41 @@ export default function Room({ roomId, name, onLeave }) {
 
   const deviations = useMemo(() => calculateDeviation(votes), [votes]);
 
-  const theme = document.documentElement.getAttribute('data-theme');
+  // Keep theme in React state so the Room re-renders immediately when theme changes.
+  const [themeState, setThemeState] = useState(() => document.documentElement.getAttribute('data-theme') || 'light');
+
+  useEffect(() => {
+    // keep in sync if another tab or part of the app updates the theme
+    const onStorage = (e) => {
+      if (e.key === 'scrum-poker-theme') {
+        setThemeState(e.newValue || document.documentElement.getAttribute('data-theme') || 'light');
+      }
+    };
+    window.addEventListener('storage', onStorage);
+
+    // MutationObserver: catch direct attribute changes to <html data-theme="...">
+    const mo = new MutationObserver((muts) => {
+      for (const m of muts) {
+        if (m.type === 'attributes' && m.attributeName === 'data-theme') {
+          setThemeState(document.documentElement.getAttribute('data-theme') || 'light');
+        }
+      }
+    });
+    mo.observe(document.documentElement, { attributes: true });
+
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      mo.disconnect();
+    };
+  }, []);
+
   const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    const newTheme = themeState === 'dark' ? 'light' : 'dark';
+    try { document.documentElement.classList.add('disable-transitions'); } catch (e) {}
     document.documentElement.setAttribute('data-theme', newTheme);
-    try {
-      localStorage.setItem('scrum-poker-theme', newTheme);
-    } catch (e) {
-      console.error('Failed to save theme to localStorage', e);
-    }
+    try { localStorage.setItem('scrum-poker-theme', newTheme); } catch (e) { console.error('Failed to save theme to localStorage', e); }
+    setThemeState(newTheme);
+    setTimeout(() => { try { document.documentElement.classList.remove('disable-transitions'); } catch (e) {} }, 60);
   };
 
   useEffect(() => {
@@ -664,14 +690,14 @@ export default function Room({ roomId, name, onLeave }) {
   const roomState = room?.state || 'voting';
 
   return (
-  <div className={`room-container ${theme}`}>
+  <div className={`room-container ${themeState}`}>
       <div className="theme-switcher">
       <label className="switch" aria-label="Toggle theme">
         <input
           type="checkbox"
-          checked={theme === 'dark'}
+          checked={themeState === 'dark'}
           onChange={toggleTheme}
-          aria-checked={theme === 'dark'}
+          aria-checked={themeState === 'dark'}
         />
         <span className="slider">
           <span className="icon sun" aria-hidden="true">
@@ -689,7 +715,7 @@ export default function Room({ roomId, name, onLeave }) {
           </span>
         </span>
       </label>
-      <span className="theme-label">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
+  <span className="theme-label">{themeState === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
     </div>
       <div className="container">
         <div className="card p-3">
@@ -886,7 +912,7 @@ export default function Room({ roomId, name, onLeave }) {
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 150" className="card-svg">
         <rect x="0" y="0" width="100" height="150" rx="10" ry="10" fill="white" stroke="red" strokeWidth="2" />
-        <text x="50" y="75" fontSize="40" textAnchor="middle" fill="black" fontFamily="Arial">{c}</text>
+        <text x="50" y="80" fontSize="36" textAnchor="middle" fill="black" fontFamily="Arial">{c}</text>
         <text x="10" y="20" fontSize="12" fill="black" fontFamily="Arial">{c}</text>
         <text x="80" y="135" fontSize="12" fill="black" fontFamily="Arial">{c}</text>
       </svg>
