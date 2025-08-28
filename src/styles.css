@@ -1,4 +1,4 @@
-.root-light, :root { --bg:#c8c8c8; --card:#fbfcfd; --ink:#0f172a; --muted:#64748b; --accent:#0ea5e9; }
+.root-light, :root { --bg:#c8c8c8; --card:#eff1f1; --ink:#0f172a; --muted:#64748b; --accent:#0ea5e9; }
 
 /* Dark theme: softer gray-black (not pure black) for reduced contrast */
 [data-theme="dark"] {
@@ -30,7 +30,7 @@ body { margin:0; min-height:100vh; font-family: ui-sans-serif, system-ui, -apple
 .container { width: 100%; max-width: none; margin: 0; padding: 14px; }
 .card { background: var(--card); border: 1px solid rgba(15,23,42,0.06); border-radius: 16px; padding: 20px; box-shadow: 0 6px 20px rgba(2,6,23,0.06); }
 .row { display:flex; gap:12px; flex-wrap: wrap; }
-.input { width:100%; padding:12px 14px; border-radius: 12px; border:1px solid rgba(15,23,42,0.08); background: #f8fafb; color:var(--ink); }
+.input { width:100%; padding:12px 14px; border-radius: 12px; border:1px solid rgba(15,23,42,0.08); background: #d2d2d263; color:var(--ink); }
 .input::placeholder { color: rgba(15,23,42,0.45); }
 .btn { padding:6px 12px; border-radius:12px; border:1px solid rgba(15,23,42,0.08); background: #ffffff; color:var(--ink); cursor:pointer; }
 .btn:hover { border-color:rgba(15,23,42,0.14); }
@@ -39,7 +39,7 @@ body { margin:0; min-height:100vh; font-family: ui-sans-serif, system-ui, -apple
 .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap:18px; }
 .cardBtn { display:flex; align-items:center; justify-content:center; height:64px; border-radius:12px; border:1px solid rgba(2,6,23,0.06); background: linear-gradient(180deg,#ffffff,#f1f5f9); cursor:pointer; color:var(--ink); }
 .cardBtn.active { outline:2px solid var(--accent); box-shadow: 0 6px 18px rgba(14,165,233,0.12); }
-.participant { display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border:1px solid rgba(2,6,23,0.04); border-radius:8px; background: #ffffff; }
+.participant { display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border:1px solid rgba(2,6,23,0.04); border-radius:8px; background: #d2d2d263; }
 
 /* participant-card used in Room.jsx for participant tiles -- keep compact */
 .participant-card { display:flex; align-items:center; gap:6px; padding:4px 6px; border-radius:8px; border:1px solid rgba(2,6,23,0.04); background: #ffffff; width:120px; max-width:125px; flex: 0 0 160px; }
@@ -166,5 +166,5 @@ body { margin:0; min-height:100vh; font-family: ui-sans-serif, system-ui, -apple
 :root .cardBtn {
   color: var(--bs-btn-disabled-color);
   background-color: var(--bs-btn-disabled-bg);
-  border-color: #121313;
+  border-color: #f6fafb;
 }

@@ -398,6 +398,35 @@
   transform: rotateY(180deg);
 }
 
+/* Make the participant's card front follow the same visuals as the "Choose your card" SVG cards
+   in light and dark themes. This ensures consistency between the selection cards and
+   the revealed participant card face. */
+/* Dark theme: use the same dark gradient and white text as .card-svg in dark mode */
+.room-container.dark .card-visual .card-side.card-front,
+.room-container.dark .card-visual .card-side.card-front .card-border {
+  background: linear-gradient(180deg, #333333 0%, #444444 100%);
+}
+.room-container.dark .card-visual .card-side.card-front .card-border {
+  border-color: red; /* keep same accent as SVG rect stroke */
+}
+.room-container.dark .card-visual .card-side.card-front .card-value,
+.room-container.dark .card-visual .card-side.card-front {
+  color: #ffffff;
+}
+
+/* Light theme: use the same light card look as the Choose-your-card SVG (white card) */
+.room-container.light .card-visual .card-side.card-front,
+.room-container.light .card-visual .card-side.card-front .card-border {
+  background: linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
+}
+.room-container.light .card-visual .card-side.card-front .card-border {
+  border-color: red;
+}
+.room-container.light .card-visual .card-side.card-front .card-value,
+.room-container.light .card-visual .card-side.card-front {
+  color: #111111;
+}
+
 /* make sure front sits above back when flipped */
 .card-visual .card-side.card-front { z-index: 2; }
 .card-visual .card-side.card-back { z-index: 1; }
@@ -668,7 +697,7 @@
 }
 
 .room-container.dark .btn {
-  background-color: #1a1a1b;
+  background-color: #27282c;
   color: #d1c9c9;
 }
 
@@ -709,26 +738,28 @@
   filter: invert(1) brightness(1.2) saturate(0) contrast(1);
 }
 
-/* Specific override: make the Story title input text black in dark mode (robust selector) */
-.room-container.dark .input[placeholder*="Story title"] {
-  color: #000000 !important; /* force black text for the story title input in dark mode */
-}
-
-/* Ensure the placeholder itself is also black in dark mode for the story title input */
-.room-container.dark .input[placeholder*="Story title"]::placeholder {
-  color: #000000 !important;
+/* Make the 'Your name' and 'Room code' inputs (and their placeholders) white in dark mode.
+   Covers both contexts: when the Room page uses `.room-container.dark` and when the app uses
+   the root attribute `[data-theme="dark"]` (App.jsx inputs live outside .room-container). */
+.room-container.dark .input[placeholder*="Your name"],
+.room-container.dark .input[placeholder*="Your name"]::placeholder,
+.room-container.dark .input[placeholder*="Room code (e.g. ABC123)"],
+.room-container.dark .input[placeholder*="Room code (e.g. ABC123)"]::placeholder {
+  color: #ffffff !important;
   opacity: 1 !important;
 }
 
-/* Make the Room code input placeholder black in dark mode */
-.room-container.dark .input[placeholder*="Room code (e.g. ABC123)"]::placeholder {
-  color: #000000 !important;
+[data-theme="dark"] .input[placeholder*="Your name"],
+[data-theme="dark"] .input[placeholder*="Your name"]::placeholder,
+[data-theme="dark"] .input[placeholder*="Room code (e.g. ABC123)"],
+[data-theme="dark"] .input[placeholder*="Room code (e.g. ABC123)"]::placeholder {
+  color: #ffffff !important;
   opacity: 1 !important;
 }
 
 /* In dark mode, make circular action buttons white with a white shadow for emphasis */
 .room-container.dark .btn-circle {
-  background-color: #ffffff !important;
+  background-color: #d1d1d1 !important;
   color: #00111a !important; /* ensure icon/text stays visible on white bg */
   border: 1px solid rgba(0,0,0,0.06);
   box-shadow: 0 8px 20px rgba(255,255,255,0.22),
@@ -751,6 +782,12 @@
   border-radius: 10px;
 }
 
+/* Make results (Average and Rounded) text white in dark mode while keeping light mode as-is */
+.room-container.dark .results .participant,
+.room-container.dark .results .participant div {
+  color: #ffffff !important;
+}
+
 /* Let the SVG background show by making the rect transparent in dark mode */
 .room-container.dark .card-svg rect {
   fill: transparent !important;
@@ -762,50 +799,65 @@
   fill: #ffffff !important;
 }
 
-/* Toggle Switch */
+/* Theme switcher (sun / moon) */
+.theme-switcher { display:flex; align-items:center; gap:10px; padding: 1px;}
+.theme-switcher .theme-label { font-size:14px; color:#dddfe3; }
+
 .switch {
   position: relative;
-  display: inline-block;
-  width: 34px;
-  height: 20px;
-}
-
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  width: 72px;
+  height: 36px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #eef2f7, #e6ecf3);
+  box-shadow: 0 4px 10px rgba(2,6,23,0.06);
   cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #ccc;
-  transition: 0.4s;
-  border-radius: 20px;
+  padding: 1px;
+}
+.switch input { position: absolute; opacity: 0; pointer-events: none; }
+
+.switch .slider {
+  display:block;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
 }
 
-.slider:before {
-  position: absolute;
+.switch .icon { display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; opacity:1; transition: color .18s, transform .28s, opacity .2s; }
+.switch .icon.sun { color: #FFD54A; } /* brighter yellow sun */
+.switch .icon.moon { color: #0b0b0b; } /* near-black moon */
+
+/* knob */
+.switch .slider::after {
   content: "";
-  height: 14px;
-  width: 14px;
-  left: 3px;
-  bottom: 3px;
-  background-color: white;
-  transition: 0.4s;
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 28px;
+  height: 28px;
+  background: radial-gradient(circle at 30% 30%, #ffffff, #f3f4f6);
   border-radius: 50%;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.12);
+  transition: transform 280ms cubic-bezier(.2,.9,.3,1), background .18s ease, left .28s ease;
 }
 
-input:checked + .slider {
-  background-color: #2196F3;
-}
+/* checked state: move knob to right and swap coloring */
+.switch input:checked + .slider::after { transform: translateX(36px); }
 
-input:checked + .slider:before {
-  transform: translateX(14px);
+
+/* subtle dark background for checked (dark mode) */
+.switch input:checked + .slider { background: linear-gradient(180deg,#2b2f36,#1f2226); }
+.switch input:checked + .slider .icon.sun { color: #f59e0b; opacity: 1; transform: scale(.9); }
+.switch input:checked + .slider .icon.moon { color: #fff; opacity: 1; transform: scale(1.02); }
+
+/* focus styles for accessibility */
+.switch input:focus + .slider::after { box-shadow: 0 0 0 4px rgba(43,124,255,0.12); }
+
+/* reduce motion for users who prefer reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .switch .slider::after { transition: none; }
 }
 
 /* Participant card adjustments */

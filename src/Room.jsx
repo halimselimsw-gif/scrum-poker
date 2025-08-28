@@ -666,15 +666,30 @@ export default function Room({ roomId, name, onLeave }) {
   return (
   <div className={`room-container ${theme}`}>
       <div className="theme-switcher">
-      <label className="switch">
+      <label className="switch" aria-label="Toggle theme">
         <input
           type="checkbox"
           checked={theme === 'dark'}
           onChange={toggleTheme}
+          aria-checked={theme === 'dark'}
         />
-        <span className="slider"></span>
+        <span className="slider">
+          <span className="icon sun" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <g stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="4" fill="currentColor" />
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+              </g>
+            </svg>
+          </span>
+          <span className="icon moon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" fill="currentColor" />
+            </svg>
+          </span>
+        </span>
       </label>
-      <span>{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
+      <span className="theme-label">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
     </div>
       <div className="container py-4">
         <div className="card p-3">
@@ -823,7 +838,7 @@ export default function Room({ roomId, name, onLeave }) {
             <div className="button-group">
               {isModerator && room.state === 'voting' && (
                 <div className="button-container">
-                  <button className="btn-circle reveal-btn" onClick={handleReveal}>
+                  <button className="btn-circle" onClick={handleReveal}>
                     <img src="/reveal-icon.svg" alt="Reveal" className="icon" />
                   </button>
                   <div className="button-label">Reveal</div>
@@ -831,7 +846,7 @@ export default function Room({ roomId, name, onLeave }) {
               )}
               {isModerator && room.state === 'revealed' && (
                 <div className="button-container">
-                  <button className="btn-circle reset-btn" onClick={reset}>
+                  <button className="btn-circle" onClick={reset}>
                     <img src="/reset-icon.svg" alt="Reset" className="icon" />
                   </button>
                   <div className="button-label">Restart</div>
