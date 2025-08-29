@@ -222,32 +222,7 @@ export default function Room({ roomId, name, onLeave }) {
         }, 100);
       }
 
-      // If a moderator scheduled a deletion marker and it's older than the grace
-      // window, allow a connected client to remove the room. This avoids
-      // immediate deletion on transient network blips.
-      try {
-        const m = data && data.markedForDeletionAt;
-        if (m && (Date.now() - m) > DELETE_GRACE_MS) {
-          // attempt to remove via transaction to avoid races
-          (async () => {
-            try {
-              await runTransaction(roomRef, (current) => {
-                if (!current) return current;
-                if (!current.markedForDeletionAt) return current;
-                if ((Date.now() - current.markedForDeletionAt) > DELETE_GRACE_MS) {
-                  // remove the room
-                  return null;
-                }
-                return current;
-              });
-            } catch (e) {
-              console.error('Failed to remove room after deletion marker expired:', e);
-            }
-          })();
-        }
-      } catch (e) {
-        console.error('Error checking markedForDeletionAt:', e);
-      }
+  // No automatic room deletion on moderator disconnects.
     };
 
     const unloadHandler = () => {
@@ -558,26 +533,11 @@ export default function Room({ roomId, name, onLeave }) {
       }
     }
 
-    (async () => {
-      try {
-        // Instead of scheduling an immediate remove, mark the room for deletion
-        // with a timestamp. A connected client will only remove the room after
-        // the grace period. This prevents immediate deletes during transient
-        // disconnects (VPN, flaky networks).
-        try {
-          const markerRef = ref(db, `rooms/${roomId}/markedForDeletionAt`);
-          onDiscObj = onDisconnect(markerRef);
-          await onDiscObj.set(Date.now());
-          // Clear any existing marker now that we're the owner and active
-          try { await set(markerRef, null); } catch(e) {}
-          console.log('Scheduled onDisconnect to set markedForDeletionAt for room:', roomId);
-        } catch (e) {
-          console.error('Failed to schedule onDisconnect marker for room:', e);
-        }
-      } catch (e) {
-        console.error('Error setting up moderator onDisconnect:', e);
-      }
-    })();
+  // Do not schedule any server-side onDisconnect action for moderators.
+  // Scheduling deletes or deletion markers onDisconnect causes rooms to be
+  // removed when the moderator experiences transient network/VPN issues.
+  // We rely on the beforeunload handler for explicit closes and on a
+  // manual leave action to remove the room. No onDisconnect scheduling.
 
     window.addEventListener('beforeunload', modUnload)
 
