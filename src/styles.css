@@ -62,7 +62,7 @@ body { margin:0; min-height:100vh; font-family: ui-sans-serif, system-ui, -apple
   color: var(--muted);
 }
 .small { font-size:12px; color:var(--muted); }
-.header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+.header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:4px; }
 .kicker { color:var(--muted); font-size:14px; }
 .footer { display:flex; gap:8px; flex-wrap: wrap; }
 .copy { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas; }

@@ -119,7 +119,9 @@
 /* Smaller screens: reduce card size and gaps to avoid wrapping collisions */
 @media (max-width: 520px) {
   .grid { gap: 10px; }
-  .cardBtn.poker { --w:72px; --h:104px; margin:6px; }
+  /* Prevent wrapping on very small screens: make the grid horizontally scrollable */
+  .grid { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 6px; }
+  .cardBtn.poker { --w:72px; --h:104px; margin:6px; flex: 0 0 auto; }
   .cardBtn.poker .poker-top { font-size:16px; }
 }
 
@@ -346,16 +348,25 @@
 }
 
 .kick-btn {
-  background: linear-gradient(180deg, rgba(255,75,75,0.02), rgba(34,211,238,0.02));
-  border: 2px solid #ff4b4b;
+  position: absolute;
+  top: -20px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: linear-gradient(180deg, rgba(255,75,75,0.06), rgba(255,75,75,0.02));
+  border: 1px solid #ff4b4b;
 /*  box-shadow:
 /*    0 0 0 3px rgba(34,211,238,0.20) inset, /* inner turquoise ring */
 /*    0 0 0 6px rgba(255,75,75,0.14),        /* outer red ring */
 /*    0 10px 30px rgba(255,75,75,0.18);      /* red lift for prominence */
   color: #ff4b4b !important;
   border-radius: 6px;
-  transform: translateY(-2px);
-  transition: box-shadow .18s ease, transform .12s ease;
+  transform: none;
+  transition: box-shadow .12s ease, transform .08s ease;
 }
 
 /* front (face) initially rotated away */
@@ -414,6 +425,14 @@
 .room-container.dark .card-visual .card-side.card-front .card-value,
 .room-container.dark .card-visual .card-side.card-front {
   color: #ffffff;
+}
+
+/* Make the Story title input visually slimmer */
+.row .input[placeholder*="Story title"] {
+  padding: 8px 10px; /* less vertical padding */
+  font-size: 14px;
+  line-height: 1.1;
+  height: auto;
 }
 
 /* Light theme: use the same light card look as the Choose-your-card SVG (white card) */
@@ -499,6 +518,12 @@
 .participant-card.poker:not(.me):not(.moderator):hover {
   box-shadow: 0 10px 22px rgba(16,24,40,0.06);
   transform: translateY(-2px);
+}
+
+.participant-card:hover .kick-btn { transform: translateY(0); box-shadow: 0 6px 18px rgba(0,0,0,0.12); }
+
+@media (max-width: 420px) {
+  .kick-btn { display: none; }
 }
 
 /* Deal animation for selection cards */
@@ -587,6 +612,18 @@
   gap: 4px;
 }
 
+/* timer variant shown in the theme-switcher (aligns right) */
+.theme-timer {
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--accent);
+}
+.room-container.dark .theme-timer { color: #ff4b4b; }
+.room-container.light .theme-timer { color: #ff4b4b; }
+
 
 /* Status bilgisini sağa fazla boşluklu ekle */
 .header .status-info {
@@ -644,7 +681,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin: 10px;
+  margin: 5px;
 }
 
 /* Label below the button */
@@ -673,6 +710,17 @@
 .results {
   margin-left: 10px;
   flex-grow: 1;
+}
+
+/* Reserve vertical/horizontal space for results when hidden for non-moderators.
+   The placeholder is invisible but occupies the same layout footprint as the
+   real .participant result card to prevent content jump on reveal. */
+.results .participant.placeholder {
+  min-height: 56px; /* similar to participant card height */
+  min-width: 140px;
+  display: block;
+  visibility: hidden; /* keep out of accessibility tree but still reserve layout */
+  pointer-events: none;
 }
 
 /* Light Theme */
@@ -850,8 +898,10 @@
 }
 
 /* Theme switcher (sun / moon) */
-.theme-switcher { display:flex; align-items:center; gap:10px; padding: 3px;}
-.theme-switcher .theme-label { font-size:14px; color:#dddfe3; }
+.theme-switcher { display:flex; align-items:center; justify-content:space-between; gap:10px; padding: 6px 8px; }
+.theme-switcher .theme-label { font-size:14px; color:#dddfe3; margin-left:8px; }
+.theme-switcher .theme-left { display:flex; align-items:center; gap:8px; }
+.theme-switcher .theme-timer { margin-left: auto; font-weight:700; color:var(--accent); }
 
 .switch {
   position: relative;
@@ -912,6 +962,7 @@
 
 /* Participant card adjustments */
 .participant-card {
+  position: relative; /* so absolute overlays (kick button) don't affect layout */
   display: flex;
   flex-direction: column; /* Kartı dikey düzenle */
   align-items: center;

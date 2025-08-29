@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ref, onValue, set, update, get, remove, onDisconnect, off, runTransaction } from 'firebase/database'
 import { db, ensureAuth } from './firebase'
@@ -678,6 +678,29 @@ export default function Room({ roomId, name, onLeave }) {
     console.log('room.state:', room?.state);
   }, [isModerator, room?.state]);
 
+  // Prevent page auto-scroll for non-moderator participants when moderator reveals results.
+  // We capture the current scroll position before the DOM update and restore it right after
+  // the reveal so the page doesn't jump for viewers who are not moderators.
+  const _prevRoomState = useRef(room?.state);
+  useEffect(() => {
+    const prev = _prevRoomState.current;
+    const curr = room?.state;
+    if (prev !== curr) {
+      if (curr === 'revealed' && user && !isModerator) {
+        try {
+          const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+          // restore after paint/layout — a tiny timeout to ensure DOM changes applied
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              try { window.scrollTo({ top: scrollY, left: 0, behavior: 'instant' }); } catch (e) { window.scrollTo(0, scrollY); }
+            }, 8);
+          });
+        } catch (e) { /* ignore */ }
+      }
+    }
+    _prevRoomState.current = curr;
+  }, [room?.state, isModerator, user]);
+
   if(loading) return <div className="container"><div className="card">Loading room…</div></div>
   // room nesnesi null ise kullanıcıyı ana sayfaya yönlendir
   if (!room) {
@@ -692,6 +715,7 @@ export default function Room({ roomId, name, onLeave }) {
   return (
   <div className={`room-container ${themeState}`}>
       <div className="theme-switcher">
+      <div className="theme-left">
       <label className="switch" aria-label="Toggle theme">
         <input
           type="checkbox"
@@ -716,14 +740,15 @@ export default function Room({ roomId, name, onLeave }) {
         </span>
       </label>
   <span className="theme-label">{themeState === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
+      </div>
+      <div className="timer theme-timer">
+        <span>{timer.hours.toString().padStart(2, '0')}:</span>
+        <span>{timer.minutes.toString().padStart(2, '0')}:</span>
+        <span>{timer.seconds.toString().padStart(2, '0')}</span>
+      </div>
     </div>
       <div className="container">
         <div className="card p-3">
-          <div className="timer">
-          <span>{timer.hours.toString().padStart(2, '0')}:</span>
-          <span>{timer.minutes.toString().padStart(2, '0')}:</span>
-          <span>{timer.seconds.toString().padStart(2, '0')}</span>
-        </div>
           <div className="header">
             <div className="room-info" style={{ display: 'flex', alignItems: 'center' }}>
               <div className="small">Room :</div>
@@ -879,19 +904,23 @@ export default function Room({ roomId, name, onLeave }) {
                 </div>
               )}
             </div>
-            {room.state === 'revealed' && (
-              <div className="results">
-                <div className="small" style={{ marginBottom: 8 }}>Results</div>
-                <div className="row">
-                  {averageVote && (
-                    <div className="participant" style={{ flex: '1 1 40px' }}>
-                      <div>Average: {averageVote.avg}</div>
-                      <div style={{ fontWeight: 500 }}>Rounded: {averageVote.rounded}</div>
-                    </div>
-                  )}
-                </div>
+            <div className="results">
+              <div className="small" style={{ marginBottom: 8 }}>Results</div>
+              <div className="row">
+                {room.state === 'revealed' && averageVote ? (
+                  <div className="participant" style={{ flex: '1 1 40px' }}>
+                    <div>Average: {averageVote.avg}</div>
+                    <div style={{ fontWeight: 500 }}>Rounded: {averageVote.rounded}</div>
+                  </div>
+                ) : (
+                  // Reserve the same space for non-moderator participants so the
+                  // "Choose your card" area doesn't shift when results appear.
+                  (!isModerator ? (
+                    <div className="participant placeholder" aria-hidden="true" style={{ flex: '1 1 40px' }} />
+                  ) : null)
+                )}
               </div>
-            )}
+            </div>
           </div>
 
           <div style={{height:5}}/>
