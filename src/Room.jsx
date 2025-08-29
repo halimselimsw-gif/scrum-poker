@@ -6,6 +6,8 @@ import './room.css'
 import { v4 as uuidv4 } from 'uuid'; // Import UUID library
 const CARDS = ['0','1','2','3','5','8','13','21','34', '55','89','?','♾','☕']
 
+const DELETE_GRACE_MS = 30 * 1000; // 30s grace before deleting room after moderator disconnect
+
 // avatar havuzu (10 adet). İsterseniz emoji'leri değiştirin.
 const AVATAR_POOL = ['🦊','🦄','🐝','🐙','🐯','🐼','🦁','🐵','🦉','🐸']
 
@@ -219,6 +221,33 @@ export default function Room({ roomId, name, onLeave }) {
           window.location.reload();
         }, 100);
       }
+
+      // If a moderator scheduled a deletion marker and it's older than the grace
+      // window, allow a connected client to remove the room. This avoids
+      // immediate deletion on transient network blips.
+      try {
+        const m = data && data.markedForDeletionAt;
+        if (m && (Date.now() - m) > DELETE_GRACE_MS) {
+          // attempt to remove via transaction to avoid races
+          (async () => {
+            try {
+              await runTransaction(roomRef, (current) => {
+                if (!current) return current;
+                if (!current.markedForDeletionAt) return current;
+                if ((Date.now() - current.markedForDeletionAt) > DELETE_GRACE_MS) {
+                  // remove the room
+                  return null;
+                }
+                return current;
+              });
+            } catch (e) {
+              console.error('Failed to remove room after deletion marker expired:', e);
+            }
+          })();
+        }
+      } catch (e) {
+        console.error('Error checking markedForDeletionAt:', e);
+      }
     };
 
     const unloadHandler = () => {
@@ -357,6 +386,10 @@ export default function Room({ roomId, name, onLeave }) {
 
   // Oda sıfırlama
   const reset = async () => {
+    if (isOffline) {
+      setToastMessage('Cannot Reset while offline');
+      return;
+    }
     try {
       console.log('Attempting transaction to reset room:', roomId);
       const newResetId = uuidv4();
@@ -501,9 +534,14 @@ export default function Room({ roomId, name, onLeave }) {
   // Moderator ayrılırsa/bağlantısı koparsa oda tamamen silinsin
   useEffect(() => {
     if (!isModerator) return
-    // Avoid using onDisconnect(roomRef).remove() because it may cause the room to be
-    // deleted unexpectedly if ownership races occur. Instead, attempt a guarded remove
-    // on unload that checks the current owner in the DB before removing.
+
+    // For moderators, schedule a room removal when their connection drops.
+    // We also keep a beforeunload handler that verifies ownership immediately
+    // and removes the room synchronously if still owner. Always cancel the
+    // onDisconnect when the moderator effect is torn down to avoid accidental
+    // deletes if ownership changes.
+    let onDiscObj = null;
+
     const modUnload = async () => {
       try {
         console.log('Moderator unload triggered, verifying ownership before removing room:', roomId, 'user:', user && user.uid);
@@ -511,7 +549,7 @@ export default function Room({ roomId, name, onLeave }) {
         const data = snap && snap.val();
         if (data && data.owner === user?.uid) {
           console.log('Confirmed owner on unload; removing room:', roomId);
-          await remove(roomRef);
+          try { await remove(roomRef); } catch(e) { console.error('Immediate remove failed on unload:', e); }
         } else {
           console.warn('Not owner at unload, skipping room remove. Current owner:', data && data.owner);
         }
@@ -520,12 +558,60 @@ export default function Room({ roomId, name, onLeave }) {
       }
     }
 
+    (async () => {
+      try {
+        // Instead of scheduling an immediate remove, mark the room for deletion
+        // with a timestamp. A connected client will only remove the room after
+        // the grace period. This prevents immediate deletes during transient
+        // disconnects (VPN, flaky networks).
+        try {
+          const markerRef = ref(db, `rooms/${roomId}/markedForDeletionAt`);
+          onDiscObj = onDisconnect(markerRef);
+          await onDiscObj.set(Date.now());
+          // Clear any existing marker now that we're the owner and active
+          try { await set(markerRef, null); } catch(e) {}
+          console.log('Scheduled onDisconnect to set markedForDeletionAt for room:', roomId);
+        } catch (e) {
+          console.error('Failed to schedule onDisconnect marker for room:', e);
+        }
+      } catch (e) {
+        console.error('Error setting up moderator onDisconnect:', e);
+      }
+    })();
+
     window.addEventListener('beforeunload', modUnload)
 
     return () => {
+      try {
+        if (onDiscObj && onDiscObj.cancel) {
+          onDiscObj.cancel().catch((e)=>{});
+        } else if (onDiscObj) {
+          // older SDKs expose cancel as a method that might not return a promise
+          try { onDiscObj.cancel(); } catch(e) {}
+        }
+      } catch (e) {}
       window.removeEventListener('beforeunload', modUnload)
     }
   }, [isModerator, roomRef])
+
+  // If we become moderator or return online, clear any stale deletion marker
+  useEffect(() => {
+    if (!isModerator || !roomId) return;
+    const clearMarker = async () => {
+      try {
+        const markerRef = ref(db, `rooms/${roomId}/markedForDeletionAt`);
+        await set(markerRef, null);
+      } catch (e) {
+        console.error('Failed to clear markedForDeletionAt on moderator/reactive online:', e);
+      }
+    };
+    // Clear now
+    clearMarker();
+    // Also clear on browser online event
+    const onOnline = () => { clearMarker(); };
+    window.addEventListener('online', onOnline);
+    return () => { window.removeEventListener('online', onOnline); };
+  }, [isModerator, roomId]);
 
   // displayName değiştiğinde hem localStorage'e kaydet hem DB'yi güncelle (eğer user varsa)
   useEffect(() => {
@@ -952,7 +1038,11 @@ export default function Room({ roomId, name, onLeave }) {
   // komponent içinde (örn. diğer handler'ların yanında) ekleyin:
   const handleReveal = async () => {
     if (!room) return
-  try { await reveal() } catch (e) { console.error('handleReveal failed', e) }
+    if (isOffline) {
+      setToastMessage('Cannot Reveal while offline');
+      return;
+    }
+    try { await reveal() } catch (e) { console.error('handleReveal failed', e) }
   }
 
   // When we've successfully joined, aggressively clear disconnected flags so
@@ -1268,9 +1358,12 @@ export default function Room({ roomId, name, onLeave }) {
                 // accept either the new boolean flag or the old timestamp field
                 const disconnectedFlag = (p.disconnectedAt === true) || null;
                 let offline = false;
-                // never mark the current user as offline in their own view
+                // mark the current user as offline in their own view only if
+                // their local browser reports offline (VPN/disconnect). This
+                // allows moderators to see their own offline state and prevents
+                // actions like Reveal/Reset when offline.
                 if (isMe) {
-                  offline = false;
+                  offline = !!isOffline;
                 } else if (lastSeen) {
                   // if lastSeen is present, use it as the source of truth
                   offline = (now - lastSeen) > OFFLINE_MS;
@@ -1354,7 +1447,7 @@ export default function Room({ roomId, name, onLeave }) {
             <div className="button-group">
               {isModerator && room.state === 'voting' && (
                 <div className="button-container">
-                  <button className="btn-circle" onClick={handleReveal}>
+                  <button className="btn-circle" onClick={handleReveal} disabled={isOffline || !!room?.markedForDeletionAt}>
                     <img src="/reveal-icon.svg" alt="Reveal" className="icon" />
                   </button>
                   <div className="button-label">Reveal</div>
@@ -1362,7 +1455,7 @@ export default function Room({ roomId, name, onLeave }) {
               )}
               {isModerator && room.state === 'revealed' && (
                 <div className="button-container">
-                  <button className="btn-circle" onClick={reset}>
+                  <button className="btn-circle" onClick={reset} disabled={isOffline || !!room?.markedForDeletionAt}>
                     <img src="/reset-icon.svg" alt="Reset" className="icon" />
                   </button>
                   <div className="button-label">Restart</div>
