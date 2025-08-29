@@ -526,6 +526,18 @@
   .kick-btn { display: none; }
 }
 
+/* Offline participant visual state */
+.participant-card.offline {
+  border-color: rgba(120,120,120,0.32) !important;
+  background: linear-gradient(180deg, rgba(240,240,240,0.02), rgba(240,240,240,0.01));
+  box-shadow: none;
+  opacity: 0.95;
+}
+.participant-card.offline .avatar { filter: grayscale(100%) opacity(0.6) contrast(0.9); }
+.p-status.offline { color: #888 !important; font-weight: 700; display:flex; align-items:center; }
+.offline-badge { display:inline-flex; align-items:center; color:#888; font-size:13px; }
+.offline-badge svg { color: #888; margin-right:6px; }
+
 /* Deal animation for selection cards */
 @keyframes deal {
   0% {

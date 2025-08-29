@@ -35,6 +35,40 @@ export default function Room({ roomId, name, onLeave }) {
     return DEFAULT_NAMES[idx]
   })
 
+  // persistent client id per browser to help rejoin/dedupe across anonymous auth resets
+  const [clientId] = useState(() => {
+    try {
+      let id = localStorage.getItem('scrum-poker-client-id')
+      if (!id) {
+        id = uuidv4()
+        try { localStorage.setItem('scrum-poker-client-id', id) } catch (e) {}
+      }
+      return id
+    } catch (e) {
+      return uuidv4()
+    }
+  })
+
+  // session id for this page/tab load — used to scope onDisconnect writes
+  const [sessionId] = useState(() => {
+    try {
+      return uuidv4();
+    } catch (e) {
+      return String(Date.now());
+    }
+  })
+
+  // Remove noisy debug output at runtime; keeps console.error intact.
+  try {
+    const __stripRoomDebug = true;
+    if (__stripRoomDebug) {
+      console.log = () => {};
+      console.debug = () => {};
+      console.warn = () => {};
+    }
+  } catch (e) {}
+
+
   // joined: kullanıcı room participants'a eklenmiş mi?
   const [joined, setJoined] = useState(false)
   const [user, setUser] = useState(null)
@@ -74,7 +108,7 @@ export default function Room({ roomId, name, onLeave }) {
     ensureAuth()
       .then((u) => {
         setUser(u);
-        console.log('User authenticated:', u); // Kullanıcı oturum bilgisi
+  // debug log removed
       })
       .catch((error) => {
         console.error('Authentication failed:', error); // Oturum açma hatası
@@ -84,12 +118,10 @@ export default function Room({ roomId, name, onLeave }) {
   // Network online/offline detection to avoid attempting DB writes while disconnected
   useEffect(() => {
     const onOffline = () => {
-      console.warn('Detected offline status');
       setIsOffline(true);
       setToastMessage('You are offline — actions are queued until connection returns');
     };
     const onOnline = () => {
-      console.log('Back online');
       setIsOffline(false);
       setToastMessage('Back online — syncing...');
       // optional: could trigger a refresh/sync here
@@ -116,15 +148,23 @@ export default function Room({ roomId, name, onLeave }) {
           // by transient network issues or VPN), set a disconnectedAt timestamp so we can
           // distinguish explicit leaves from transient disconnects.
           try {
-            const discPath = `rooms/${roomId}/participants/${user.uid}/disconnectedAt`;
-            // Always use modular ref to avoid mixed SDK/compat objects in production bundles.
-            const discRef = ref(db, discPath);
-            // helpful debug when running into production mismatched bundle issues
-            if (pRef) console.debug('pRef present type:', typeof pRef, pRef && pRef.constructor && pRef.constructor.name);
-            onDisconnect(discRef).set(Date.now());
-            console.log('onDisconnect set for participant.disconnectedAt:', user.uid);
+            // Write both disconnectedAt and disconnectedSession so we can ignore
+            // stale disconnects that belong to a previous session.
+            const discAtPath = `rooms/${roomId}/participants/${user.uid}/disconnectedAt`;
+            const discSessionPath = `rooms/${roomId}/participants/${user.uid}/disconnectedSession`;
+            const discAtRef = ref(db, discAtPath);
+            const discSessionRef = ref(db, discSessionPath);
+            // debug info removed
+            try {
+              // write boolean true on disconnect
+              onDisconnect(discAtRef).set(true);
+            } catch(e) { console.warn('onDisconnect(discAtRef) failed', e) }
+            try {
+              onDisconnect(discSessionRef).set(sessionId);
+            } catch(e) { console.warn('onDisconnect(discSessionRef) failed', e) }
+            // onDisconnect set
           } catch (err) {
-            console.error('onDisconnect set failed for participant.disconnectedAt:', err);
+            console.error('onDisconnect set failed for participant.disconnectedAt/disconnectedSession:', err);
           }
         } catch (err) {
           console.error('Failed to set onDisconnect for participant.disconnectedAt:', err);
@@ -141,13 +181,13 @@ export default function Room({ roomId, name, onLeave }) {
     // Oda verisi güncellemelerini loglama
     const onValueCallback = (snap) => {
       if (!snap.exists()) {
-        console.warn('Room does not exist or was deleted:', roomId); // Oda silinmiş
+        // room missing
         onLeave(); // App.jsx’teki setMode('home') tetiklenecek
         return;
       }
 
       const data = snap.val();
-      console.log('Room data updated:', data); // Oda verisi güncellendi
+  // room data updated
       setRoom(data);
 
       const currentVote = data?.participants?.[user.uid]?.vote ?? null;
@@ -156,11 +196,10 @@ export default function Room({ roomId, name, onLeave }) {
 
       if (data?.participants?.[user.uid]) {
         setJoined(true);
-        console.log('User rejoined room:', user.uid); // Kullanıcı yeniden bağlandı
       }
 
       if (data?.kicks?.[user.uid]) {
-        console.warn('User was kicked from the room:', user.uid); // Kullanıcı atıldı
+        // user was kicked
         try {
           remove(ref(db, `rooms/${roomId}/kicks/${user.uid}`));
         } catch (e) {
@@ -185,8 +224,8 @@ export default function Room({ roomId, name, onLeave }) {
     const unloadHandler = () => {
       try {
         if (pRef && joined) {
-          console.log('Marking participant disconnectedAt on unload (transient):', user.uid);
-          try { set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedAt`), Date.now()) } catch (e) {}
+            console.log('Marking participant disconnectedAt=true (transient) on unload:', user.uid);
+          try { set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedAt`), true) } catch (e) {}
         }
       } catch (e) {
         console.error('Failed to mark participant disconnected on unload:', e);
@@ -196,33 +235,55 @@ export default function Room({ roomId, name, onLeave }) {
   let mounted = true;
     (async () => {
       try {
-        const snap = await get(roomRef);
-        console.log('Initial room data:', snap.val()); // İlk oda verisi
+        // helper: get with retries to handle transient network/permission blips
+        const getWithRetry = async (attempts = 5, baseDelay = 200) => {
+          for (let i = 0; i < attempts; i++) {
+            try {
+              const snap = await get(roomRef);
+              return snap;
+            } catch (e) {
+              console.error('get(roomRef) attempt', i + 1, 'failed:', e && (e.message || e.toString()));
+            }
+            // backoff
+            await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, i)));
+          }
+          return null;
+        };
 
-        // runTransaction işlemi sırasında hata loglama
-        try {
-          console.log('Running owner-assign transaction for room:', roomId, 'user:', user.uid);
-          await runTransaction(roomRef, (current) => {
-            if (current == null) {
-              console.log('Creating new room (transaction):', roomId); // Yeni oda oluşturuluyor
-              return {
-                createdAt: Date.now(),
-                state: 'voting',
-                story: '',
-                participants: {},
-                owner: user.uid,
-              };
-            }
-            if (!current.owner) {
-              console.log('Assigning owner to room (transaction):', user.uid); // Owner atanıyor
-              current.owner = user.uid;
-            }
-            return current;
-          });
-          console.log('Owner transaction completed for room:', roomId);
-        } catch (error) {
-          console.error('Failed to run transaction:', error && error.message ? error.message : error); // Transaction hatası
+        const snap = await getWithRetry(5, 150);
+        // initial room data fetched (or null after retries)
+
+        // Do not create a room implicitly here. If the room doesn't exist after
+        // several attempts, abort to avoid permission/set errors. This avoids
+        // intermittent failures where a transient DB error returns empty.
+        if (!snap || !snap.exists()) {
+          console.error('Room does not exist after retries; aborting owner-assign to avoid creating room:', roomId);
+          setToastMessage('Room not found or temporarily unavailable. Please try again.');
+          onLeave();
+          navigate('/');
+          return;
         }
+
+        // run owner-assign transaction with a few retries
+        const runTransactionWithRetry = async (attempts = 3, baseDelay = 150) => {
+          for (let i = 0; i < attempts; i++) {
+            try {
+              await runTransaction(roomRef, (current) => {
+                if (!current) return current;
+                if (!current.owner) current.owner = user.uid;
+                return current;
+              });
+              return;
+            } catch (e) {
+              console.error('owner-assign transaction attempt', i + 1, 'failed:', e && (e.message || e.toString()));
+            }
+            await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, i)));
+          }
+          // final fallback: log and continue; not critical to block user further
+          console.error('owner-assign transaction failed after retries; continuing without owner assign');
+        };
+
+        await runTransactionWithRetry(3, 150);
 
         window.addEventListener('beforeunload', unloadHandler);
         onValue(roomRef, onValueCallback);
@@ -255,9 +316,15 @@ export default function Room({ roomId, name, onLeave }) {
       console.warn('Attempted to cast vote while offline');
       return;
     }
-    console.log('Casting vote:', value); // Oy kullanılıyor
     setMyVote(value);
     try {
+      // Ensure presence flag cleared when the user takes an action (vote)
+      try {
+        await set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedAt`), false);
+        // clear reveal-offline marker so this user returns online
+        await set(ref(db, `rooms/${roomId}/participants/${user.uid}/revealOffline`), null);
+      } catch (e) { /* ignore */ }
+
       await set(ref(db, `rooms/${roomId}/participants/${user.uid}/vote`), value);
     } catch (error) {
       console.error('Failed to cast vote via set():', error); // Oy kullanma hatası
@@ -267,13 +334,22 @@ export default function Room({ roomId, name, onLeave }) {
   // Oda durumunu açığa çıkarma
   const reveal = async () => {
     try {
-      console.log('Attempting transaction to set room state -> revealed for', roomId);
+      // When revealing, set room state to 'revealed' and mark non-voters revealOffline=true
       await runTransaction(roomRef, (current) => {
         if (!current) return current;
         current.state = 'revealed';
+        if (current.participants) {
+          for (const [uid, p] of Object.entries(current.participants)) {
+            // skip the room owner (moderator) — don't mark them offline
+            if (current.owner && uid === current.owner) continue;
+            // if participant hasn't voted (null/undefined/empty) mark them as revealOffline
+            if (!p || p.vote === null || p.vote === undefined || p.vote === '') {
+              current.participants[uid] = Object.assign({}, p, { revealOffline: true, disconnectedAt: true });
+            }
+          }
+        }
         return current;
       });
-      console.log('Room state transaction completed: revealed');
     } catch (error) {
       console.error('Failed to set room state to revealed via transaction:', error);
     }
@@ -314,10 +390,27 @@ export default function Room({ roomId, name, onLeave }) {
   
 
   const participants = useMemo(() => {
-    return Object.entries(room?.participants || {})
-      .map(([uid, p]) => ({ uid, ...p }))
-      .sort((a,b)=> (a.joinedAt||0)-(b.joinedAt||0))
-  }, [room])
+    const raw = Object.entries(room?.participants || {}).
+      map(([uid, p]) => ({ uid, ...p }));
+
+    // Dedupe by clientId when available, otherwise by name. Keep the most
+    // recently active record (by lastSeen or joinedAt) to avoid showing stale
+    // offline duplicates when a participant rejoins.
+    const mapByKey = new Map();
+    for (const p of raw) {
+      const key = p.clientId || (p.name ? String(p.name).trim() : p.uid);
+      const existing = mapByKey.get(key);
+      const existingScore = existing ? ((existing.lastSeen || existing.joinedAt || 0)) : 0;
+      const pScore = (p.lastSeen || p.joinedAt || 0);
+      if (!existing || pScore >= existingScore) {
+        mapByKey.set(key, p);
+      }
+    }
+
+    const out = Array.from(mapByKey.values());
+    out.sort((a,b)=> (a.joinedAt||0)-(b.joinedAt||0));
+    return out;
+  }, [room?.participants])
 
   // sadece anlamlı oy değerlerini al (null/undefined/empty atla)
   const votes = participants.map(p => p.vote).filter(v => v !== null && v !== undefined && v !== '')
@@ -466,30 +559,20 @@ export default function Room({ roomId, name, onLeave }) {
     }
     try {
       // First, ensure room exists. Create with set() if missing to avoid large-root transactions.
-      try {
+        try {
         const snap = await get(roomRef);
         if (!snap.exists()) {
-          console.log('Room missing, creating root with transaction for', roomId);
-          try {
-            await runTransaction(roomRef, (current) => {
-              if (current == null) {
-                return {
-                  createdAt: Date.now(),
-                  state: 'voting',
-                  story: '',
-                  participants: {},
-                  owner: user.uid,
-                };
-              }
-              return current;
-            });
-          } catch (e) {
-            console.warn('room creation transaction failed', e);
-          }
+          // Do NOT auto-create a room on join. If the room doesn't exist, treat it as missing
+          // — creating a room here caused accidental new rooms when rejoining. Redirect out.
+          console.warn('Room does not exist; aborting join to avoid accidental room creation:', roomId);
+          setToastMessage('Room not found');
+          onLeave();
+          navigate('/');
+          return;
         } else {
           const data = snap.val();
           if (!data.owner) {
-            // transact only on the owner child to avoid aborting transactions on other children
+            // ensure owner exists but don't create root room
             const ownerRef = ref(db, `rooms/${roomId}/owner`);
             try {
               await runTransaction(ownerRef, (cur) => cur || user.uid);
@@ -503,34 +586,342 @@ export default function Room({ roomId, name, onLeave }) {
       }
 
       // Then write participant entry directly to the narrow participant path
-      try {
-        await set(pRef, {
-          name: displayName,
-          vote: null,
-          joinedAt: Date.now(),
-          disconnectedAt: null
-        });
-        // start heartbeat to indicate presence
+        try {
+          // --- Preserve + Deduplicate logic ---
+          // If there are existing participant nodes that appear to belong to
+          // this person (same clientId or same displayName + disconnectedAt/stale),
+          // capture their data locally, remove those nodes from the DB, and
+          // then re-create our participant entry using their preserved data.
+          try {
+            const partsSnap = await get(ref(db, `rooms/${roomId}/participants`));
+            const parts = partsSnap && partsSnap.val() ? partsSnap.val() : {};
+            const now = Date.now();
+            const STALE_MS = 5 * 60 * 1000; // 5 minutes
+            // choose the best candidate to preserve (most recent lastSeen/joinedAt)
+            let preserved = null;
+            let preservedUid = null;
+            for (const [otherUid, pdata] of Object.entries(parts)) {
+              try {
+                if (!pdata) continue;
+                if (otherUid === user.uid) continue;
+                if (!displayName) continue;
+                const otherClient = pdata.clientId || null;
+                const nameMatches = String(pdata.name || '').trim() === String(displayName || '').trim();
+
+                // Prefer same clientId first
+                if (otherClient && otherClient === clientId) {
+                  // pick the most recent one if multiple
+                  const score = pdata.lastSeen || pdata.joinedAt || 0;
+                  if (!preserved || (score > (preserved.lastSeen || preserved.joinedAt || 0))) {
+                    preserved = pdata;
+                    preservedUid = otherUid;
+                  }
+                  continue;
+                }
+
+                // If same name and explicitly disconnected, prefer it
+                if (nameMatches && pdata.disconnectedAt === true) {
+                  const score = pdata.lastSeen || pdata.joinedAt || 0;
+                  if (!preserved || (score > (preserved.lastSeen || preserved.joinedAt || 0))) {
+                    preserved = pdata;
+                    preservedUid = otherUid;
+                  }
+                  continue;
+                }
+
+                // Fallback: if name matches and no lastSeen or very stale, consider it
+                const lastSeen = pdata.lastSeen || pdata.joinedAt || 0;
+                const age = now - lastSeen;
+                if (nameMatches && (!lastSeen || age > STALE_MS)) {
+                  const score = lastSeen || 0;
+                  if (!preserved || (score > (preserved.lastSeen || preserved.joinedAt || 0))) {
+                    preserved = pdata;
+                    preservedUid = otherUid;
+                  }
+                }
+              } catch (innerErr) {
+                console.warn('Failed while scanning participants for preservation:', otherUid, innerErr && (innerErr.code || innerErr.message || innerErr.toString()));
+              }
+            }
+
+            if (preserved && preservedUid) {
+              // remove the preserved node(s) from DB so the re-add is clean
+              try {
+                await remove(ref(db, `rooms/${roomId}/participants/${preservedUid}`));
+              } catch (e) {
+                // failed to remove preserved node
+              }
+            }
+
+            // attach preserved data to a local variable for later use in set(pRef)
+            // we keep the whole object but will override joinedAt/lastSeen/disconnectedAt
+            var preservedData = preserved ? Object.assign({}, preserved) : null;
+          } catch (e) {
+            console.warn('Participant preservation/dedupe scan failed', e && (e.code || e.message || e.toString()));
+          }
+        // --- end preserve + dedupe ---
+        try {
+          // Build the participant payload, preferring preservedData fields where safe
+          const nowP = Date.now();
+          const base = {
+            name: displayName,
+            vote: null,
+            joinedAt: nowP,
+            disconnectedAt: false, // initial false
+            clientId,
+            sessionId
+          };
+          if (typeof preservedData === 'object' && preservedData !== null) {
+            if (preservedData.vote) base.vote = preservedData.vote;
+            for (const k of Object.keys(preservedData)) {
+              if (!['name','vote','joinedAt','lastSeen','disconnectedAt','clientId'].includes(k)) base[k] = preservedData[k];
+            }
+          }
+
+          // First attempt: atomic transaction that upserts our new participant and removes preservedUid/duplicates
+            try {
+            // attempting rejoin transaction
+            const tx = await runTransaction(roomRef, (current) => {
+              if (!current) return current;
+              if (!current.participants) current.participants = {};
+              const parts = current.participants;
+              const existing = parts[user.uid] || {};
+              parts[user.uid] = Object.assign({}, existing, base, {
+                joinedAt: existing.joinedAt || nowP,
+                lastSeen: nowP,
+                disconnectedAt: false,
+                disconnectedSession: null,
+              });
+
+              // remove the preserved node if present
+              try { if (preservedUid && parts[preservedUid]) delete parts[preservedUid]; } catch(e){}
+
+              // also remove any other duplicates by clientId or same-name+disconnectedAt/stale
+              const CLEAN_STALE_MS_T = 30 * 1000;
+              for (const otherUid of Object.keys(parts)) {
+                if (otherUid === user.uid) continue;
+                const pdata = parts[otherUid] || {};
+                const otherClient = pdata.clientId || null;
+                const nameMatches = String(pdata.name || '').trim() === String(displayName || '').trim();
+                if (otherClient && otherClient === clientId) {
+                  delete parts[otherUid];
+                  continue;
+                }
+                  // If same name and explicit disconnected exists, only remove
+                  // if that disconnectedSession is not our current session (stale)
+                  if (nameMatches && pdata.disconnectedAt === true) {
+                    const otherDiscSess = pdata.disconnectedSession || null;
+                    if (!otherDiscSess || otherDiscSess !== sessionId) {
+                      delete parts[otherUid];
+                      continue;
+                    }
+                  }
+                if (nameMatches) {
+                  const otherLast = pdata.lastSeen || 0;
+                  const otherStale = otherLast && ((nowP - otherLast) > CLEAN_STALE_MS_T);
+                  if (!otherLast || otherStale) delete parts[otherUid];
+                }
+              }
+
+              current.participants = parts;
+              return current;
+            });
+            // rejoin transaction result
+            // if committed, we've been re-added atomically; ensure disconnectedAt cleared
+            if (tx && tx.committed) {
+              try { await set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedAt`), false); } catch(e){ /* ignore */ }
+              // proceed to start heartbeat later as normal
+            } else {
+              // rejoin transaction did not commit; falling back to direct set
+              // fallback to direct set below
+              throw new Error('tx-not-committed');
+            }
+          } catch (txErr) {
+            // If transaction fails or didn't commit, try direct set with retries (fallback path)
+
+            // attempt to remove same-clientId nodes before set
+            try {
+              const partsSnap2 = await get(ref(db, `rooms/${roomId}/participants`));
+              const parts2 = partsSnap2 && partsSnap2.val() ? partsSnap2.val() : {};
+              for (const [otherUid, pdata] of Object.entries(parts2)) {
+                if (!pdata) continue;
+                if (otherUid === user.uid) continue;
+                const otherClient = pdata.clientId || null;
+                if (otherClient && otherClient === clientId) {
+                  try { await remove(ref(db, `rooms/${roomId}/participants/${otherUid}`)); } catch (e) { /* ignore */ }
+                }
+              }
+            } catch (e) { console.warn('Fallback pre-set removal scan failed', e) }
+
+            // direct set with small retry loop
+            let attempt = 0;
+            let lastErr = null;
+      while (attempt < 3) {
+              attempt++;
+              try {
+    await set(pRef, base);
+                lastErr = null;
+  try { await set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedAt`), false); } catch(e){ /* ignore */ }
+                break;
+              } catch (e) {
+                lastErr = e;
+    // fallback set attempt failed
+                await new Promise(r => setTimeout(r, 150 * attempt));
+              }
+            }
+            if (lastErr) throw lastErr;
+          }
+        } catch (setErr) {
+          console.error('Final rejoin add failed for', user.uid, setErr && (setErr.code || setErr.message || setErr.toString()));
+          throw setErr;
+        }
+
+        // Immediately mark presence for other clients: write lastSeen and clear disconnectedAt
+        try {
+          const now = Date.now();
+          await set(ref(db, `rooms/${roomId}/participants/${user.uid}/lastSeen`), now);
+          try {
+            await set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnected`), false);
+          } catch (clearErr) {
+            // ignore
+          }
+        } catch (e) {
+          // small retry if immediate write failed
+          setTimeout(async () => {
+            try {
+              const now2 = Date.now();
+              await set(ref(db, `rooms/${roomId}/participants/${user.uid}/lastSeen`), now2);
+              try {
+                await set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedAt`), false);
+              } catch (ee) { /* ignore */ }
+            } catch (err) { /* ignore */ }
+          }, 250);
+        }
+
+        // Aggressive clearing to beat any onDisconnect races: try immediate and delayed clears
+        const ensureClear = async () => {
+          try {
+            await set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedAt`), false);
+            await set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedSession`), null);
+          } catch (err) {
+            // ignore
+          }
+        };
+        ensureClear();
+        setTimeout(ensureClear, 200);
+        setTimeout(ensureClear, 800);
+
+        // Cleanup: remove stale/duplicate participant entries
+        const doCleanup = async () => {
+          try {
+            const partsSnap = await get(ref(db, `rooms/${roomId}/participants`));
+            const parts = partsSnap && partsSnap.val() ? partsSnap.val() : {};
+            const now3 = Date.now();
+            const CLEAN_STALE_MS = 30 * 1000;
+            for (const [otherUid, pdata] of Object.entries(parts)) {
+              if (!pdata) continue;
+              if (otherUid === user.uid) continue;
+              const nameMatches = String(pdata.name || '').trim() === String(displayName || '').trim();
+              const otherClient = pdata.clientId || null;
+
+              if (otherClient && otherClient === clientId) {
+                try { await remove(ref(db, `rooms/${roomId}/participants/${otherUid}`)); } catch (e) { /* ignore */ }
+                continue;
+              }
+
+              if (nameMatches && pdata.disconnectedAt === true) {
+                try { await remove(ref(db, `rooms/${roomId}/participants/${otherUid}`)); } catch (e) { /* ignore */ }
+                continue;
+              }
+
+              if (nameMatches) {
+                const otherLast = pdata.lastSeen || 0;
+                const otherStale = otherLast && ((now3 - otherLast) > CLEAN_STALE_MS);
+                if (!otherLast || otherStale) {
+                  try { await remove(ref(db, `rooms/${roomId}/participants/${otherUid}`)); } catch (e) { /* ignore */ }
+                }
+              }
+            }
+          } catch (e) { /* ignore */ }
+        };
+
+        doCleanup();
+        setTimeout(doCleanup, 500);
+        setTimeout(doCleanup, 1500);
+
+        // Transactional cleanup on root
+        try {
+          await runTransaction(roomRef, (current) => {
+            if (!current) return current;
+            if (!current.participants) current.participants = {};
+            const parts = current.participants;
+            const nowT = Date.now();
+            const CLEAN_STALE_MS_T = 30 * 1000;
+
+            const existing = parts[user.uid] || {};
+            parts[user.uid] = Object.assign({}, existing, {
+              name: String(displayName || existing.name || ''),
+              clientId,
+              lastSeen: nowT,
+              disconnected: false,
+              joinedAt: existing.joinedAt || nowT,
+            });
+
+            for (const otherUid of Object.keys(parts)) {
+              if (otherUid === user.uid) continue;
+              const pdata = parts[otherUid] || {};
+              const otherClient = pdata.clientId || null;
+              const nameMatches = String(pdata.name || '').trim() === String(displayName || '').trim();
+
+              if (otherClient && otherClient === clientId) {
+                delete parts[otherUid];
+                continue;
+              }
+
+              if (nameMatches && pdata.disconnectedAt === true) {
+                const otherDiscSess = pdata.disconnectedSession || null;
+                if (!otherDiscSess || otherDiscSess !== sessionId) {
+                  delete parts[otherUid];
+                  continue;
+                }
+              }
+
+              if (nameMatches) {
+                const otherLast = pdata.lastSeen || 0;
+                const otherStale = otherLast && ((nowT - otherLast) > CLEAN_STALE_MS_T);
+                if (!otherLast || otherStale) delete parts[otherUid];
+              }
+            }
+
+            current.participants = parts;
+            return current;
+          });
+        } catch (e) { /* ignore */ }
+
         try {
           const hbId = setInterval(() => {
             set(ref(db, `rooms/${roomId}/participants/${user.uid}/lastSeen`), Date.now()).catch(()=>{});
           }, 15000);
           window.__scrumPokerHeartbeat = window.__scrumPokerHeartbeat || {};
           window.__scrumPokerHeartbeat[user.uid] = hbId;
-        } catch(e) { console.warn('Failed to start heartbeat', e) }
+        } catch(e) { /* ignore */ }
       } catch (e) {
         console.error('Failed to set participant entry on join:', e);
         throw e;
       }
 
-    // Cancel any onDisconnect for participant.disconnectedAt (we manage cleanup via heartbeat/TTL)
+    // Cancel any onDisconnect for participant.disconnected and disconnectedSession
     try {
-      const discPath = `rooms/${roomId}/participants/${user.uid}/disconnectedAt`;
-      const discRefCancel = ref(db, discPath);
-      const od = onDisconnect(discRefCancel);
-      if (od && typeof od.cancel === 'function') od.cancel();
+      const discFlagPath = `rooms/${roomId}/participants/${user.uid}/disconnected`;
+      const discSessPath = `rooms/${roomId}/participants/${user.uid}/disconnectedSession`;
+      const discFlagRefCancel = ref(db, discFlagPath);
+      const discSessRefCancel = ref(db, discSessPath);
+      const od1 = onDisconnect(discFlagRefCancel);
+      const od2 = onDisconnect(discSessRefCancel);
+      try { if (od1 && typeof od1.cancel === 'function') od1.cancel(); } catch(e){}
+      try { if (od2 && typeof od2.cancel === 'function') od2.cancel(); } catch(e){}
     } catch (e) {
-      console.warn('Failed to cancel onDisconnect for participant.disconnectedAt', e);
+      console.warn('Failed to cancel onDisconnect for participant.disconnected/disconnectedSession', e);
     }
       try { localStorage.setItem('scrum-poker-name', displayName) } catch(e){}
       setJoined(true)
@@ -548,10 +939,10 @@ export default function Room({ roomId, name, onLeave }) {
     if (!joined) return;
     try {
       const exists = !!room?.participants?.[user.uid];
-      if (!exists) {
-        console.log('Auto-rejoining participant after reconnect for', user.uid);
-        const pr = ref(db, `rooms/${roomId}/participants/${user.uid}`);
-        set(pr, { name: displayName, vote: null, joinedAt: Date.now() }).catch((e) => console.error('Auto-rejoin failed', e));
+  if (!exists) {
+  console.log('Auto-rejoining participant after reconnect for', user.uid);
+  const pr = ref(db, `rooms/${roomId}/participants/${user.uid}`);
+  set(pr, { name: displayName, vote: null, joinedAt: Date.now(), disconnectedAt: false }).catch((e) => console.error('Auto-rejoin failed', e));
       }
     } catch (e) {
       console.error('Auto-rejoin check failed', e);
@@ -563,6 +954,39 @@ export default function Room({ roomId, name, onLeave }) {
     if (!room) return
   try { await reveal() } catch (e) { console.error('handleReveal failed', e) }
   }
+
+  // When we've successfully joined, aggressively clear disconnected flags so
+  // we can observe presence state clearing on page load / rejoin.
+  useEffect(() => {
+    if (!joined || !user) return;
+    (async () => {
+      try {
+        console.log('Post-join: clearing disconnectedAt/disconnectedSession for', user.uid);
+        await set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedAt`), false);
+        await set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedSession`), null);
+        console.log('Post-join: cleared disconnected flags for', user.uid);
+      } catch (e) {
+        console.warn('Post-join: failed to clear disconnected flags', e);
+      }
+
+      // retry a couple times to beat onDisconnect races
+      setTimeout(async () => {
+        try {
+          await set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedAt`), false);
+          await set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedSession`), null);
+          console.log('Post-join retry: cleared disconnected flags for', user.uid);
+        } catch (e) { console.warn('Post-join retry failed', e) }
+      }, 200);
+
+      setTimeout(async () => {
+        try {
+          await set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedAt`), false);
+          await set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedSession`), null);
+          console.log('Post-join retry2: cleared disconnected flags for', user.uid);
+        } catch (e) { console.warn('Post-join retry2 failed', e) }
+      }, 800);
+    })();
+  }, [joined, user, roomId]);
 
   // triggerDeal uses the dealt state declared earlier
   const triggerDeal = () => {
@@ -759,6 +1183,8 @@ export default function Room({ roomId, name, onLeave }) {
                   const inviteLink = `${window.location.origin}/room/${roomId}`;
                   navigator.clipboard.writeText(inviteLink);
                   setToastMessage('Invite link copied to clipboard!');
+                  // reactivate if this user was reveal-offline
+                  try { if (user && user.uid) { set(ref(db, `rooms/${roomId}/participants/${user.uid}/revealOffline`), null); set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedAt`), false); } } catch(e){}
                 }}
                 style={{ display: 'flex', alignItems: 'center', padding: '4px' }}
               >
@@ -789,6 +1215,7 @@ export default function Room({ roomId, name, onLeave }) {
                 onClick={() => {
                   navigator.clipboard.writeText(roomId);
                   setToastMessage('Room code copied to clipboard!');
+                  try { if (user && user.uid) { set(ref(db, `rooms/${roomId}/participants/${user.uid}/revealOffline`), null); set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedAt`), false); } } catch(e){}
                 }}
               >
                 <img src="/copy-icon.svg" alt="Copy" style={{ width: '16px', height: '16px', marginRight: '4px' }} />
@@ -832,10 +1259,32 @@ export default function Room({ roomId, name, onLeave }) {
                 const voted = !!p.vote;
                 const isMe = user && p.uid === user.uid;
                 const AVATAR = avatarFor(p.uid);
+                // determine offline: prefer recent lastSeen over disconnectedAt.
+                // If lastSeen exists and is recent => online even if disconnectedAt was set earlier.
+                // If lastSeen missing but disconnectedAt exists => consider offline.
+                const OFFLINE_MS = 45 * 1000; // 45s threshold (heartbeat ~15s)
+                const now = Date.now();
+                const lastSeen = p.lastSeen || null;
+                // accept either the new boolean flag or the old timestamp field
+                const disconnectedFlag = (p.disconnectedAt === true) || null;
+                let offline = false;
+                // never mark the current user as offline in their own view
+                if (isMe) {
+                  offline = false;
+                } else if (lastSeen) {
+                  // if lastSeen is present, use it as the source of truth
+                  offline = (now - lastSeen) > OFFLINE_MS;
+                } else if (disconnectedFlag) {
+                  // no lastSeen, but explicit disconnected flag exists -> offline
+                  offline = true;
+                } else {
+                  // no signals yet (very new participant) -> assume online
+                  offline = false;
+                }
                 return (
                   <div
                     key={p.uid}
-                    className={`participant-card poker ${voted ? 'voted' : 'not-voted'} ${isMe ? 'me' : ''} ${room?.owner === p.uid ? 'moderator' : ''}`}
+                    className={`participant-card poker ${voted ? 'voted' : 'not-voted'} ${isMe ? 'me' : ''} ${room?.owner === p.uid ? 'moderator' : ''} ${offline ? 'offline' : ''}`}
                     aria-current={isMe}
                   >
                     {/* flip only when room is revealed */}
@@ -858,7 +1307,7 @@ export default function Room({ roomId, name, onLeave }) {
                         </div>
                       </div>
                     </div>
-                     <div className="p-info">
+                    <div className="p-info">
                        <div className="p-name">
                          {p.name || 'Anonymous'}
                          {isMe && <span className="me-badge" aria-hidden> You</span>}
@@ -866,7 +1315,23 @@ export default function Room({ roomId, name, onLeave }) {
                           <span className="surprise-icon" title="Confused">😲</span>
                         )}
                        </div>
-                      <div className="p-status">{voted ? '👍 Voted' : '⏳ Waiting'}</div>
+                      <div className={`p-status ${offline ? 'offline' : ''}`}>
+                        {offline ? (
+                          <span className="offline-badge" title="Offline">
+                            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden xmlns="http://www.w3.org/2000/svg">
+                              <g fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M2.05 6.39a16 16 0 0119.9 0" />
+                                <path d="M4.93 9.27a11 11 0 0114.14 0" />
+                                <path d="M7.76 12.1a6 6 0 018.48 0" />
+                                <path d="M3 3l18 18" />
+                              </g>
+                            </svg>
+                            <span style={{ marginLeft: 8 }}>Offline</span>
+                          </span>
+                        ) : (
+                          (voted ? '👍 Voted' : '⏳ Waiting')
+                        )}
+                      </div>
                      </div>
                      {isModerator && user?.uid !== p.uid && (
                        <button

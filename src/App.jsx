@@ -118,9 +118,17 @@ useEffect(() => {
 }, []);
 
 useEffect(() => {
-  const updateRoomState = async () => {
+    const updateRoomState = async () => {
     const rRef = ref(db, `rooms/${roomId}`);
     try {
+      // ensure room exists before running a transaction that assumes it
+      const { get } = await import('firebase/database');
+      const snap = await get(rRef);
+      if (!snap || !snap.exists()) {
+        console.warn('updateRoomState: room not found, skipping initial state set for', roomId);
+        return;
+      }
+
       await runTransaction(rRef, (current) => {
         if (current && !current.state) {
           return { ...current, state: 'voting' };
