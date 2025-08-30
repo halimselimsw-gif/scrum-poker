@@ -1,12 +1,19 @@
-.root-light, :root { --bg:#c8c8c8; --card:#eff1f1; --ink:#0f172a; --muted:#64748b; --accent:#0ea5e9; }
+.root-light, :root { 
+  /* Light (soft neutral) */
+  --bg: #f6f8fb;        /* soft off-white/blue tint */
+  --card: #ffffff;      /* card surfaces stay white */
+  --ink: #0f1724;       /* dark slate text */
+  --muted: #6b7280;     /* muted gray */
+  --accent: #0ea5e9;    /* accent preserved */
+}
 
-/* Dark theme: softer gray-black (not pure black) for reduced contrast */
+/* Dark theme: softer near-black with cool-blue tint to reduce contrast */
 [data-theme="dark"] {
-  --bg: #1f2226; /* dark gray-black background */
-  --card: #27282c; /* slightly lighter card surface */
-  --ink: #e6eef6; /* readable light text */
-  --muted: #9aa3ad;
-  --accent: #22d3ee;
+  --bg: #0b1220;        /* deep navy-black (soft, not pure black) */
+  --card: #0f1724;      /* slightly lighter card surface */
+  --ink: #e6eef6;       /* gentle light text */
+  --muted: #9aa3ad;     /* muted gray */
+  --accent: #22d3ee;    /* accent preserved */
 }
 * { box-sizing: border-box; }
 html, body, #root {
@@ -27,12 +34,12 @@ body { margin:0; min-height:100vh; font-family: ui-sans-serif, system-ui, -apple
 }
 .card h1, .card h2, .header h1, .header h2 { color: var(--ink); }
 .badge { color: var(--muted); background: transparent; }
-.container { width: 100%; max-width: none; margin: 0; padding: 8px; }
+.container { width: 100%; max-width: none; margin: 0; padding: 14px; }
 .card { background: var(--card); border: 1px solid rgba(15,23,42,0.06); border-radius: 16px; padding: 20px; box-shadow: 0 6px 20px rgba(2,6,23,0.06); }
 .row { display:flex; gap:12px; flex-wrap: wrap; }
 .input { width:100%; padding:12px 14px; border-radius: 12px; border:1px solid rgba(15,23,42,0.08); background: #d2d2d263; color:var(--ink); }
 .input::placeholder { color: rgba(15,23,42,0.45); }
-.btn { padding:4px 12px; border-radius:12px; border:1px solid rgba(15,23,42,0.08); background: #ffffff; color:var(--ink); cursor:pointer; }
+.btn { padding:10px 14px; border-radius:12px; border:1px solid rgba(15,23,42,0.08); background: #ffffff; color:var(--ink); cursor:pointer; }
 .btn:hover { border-color:rgba(15,23,42,0.14); }
 .btn.primary { background: linear-gradient(135deg, #0ea5e9, #22d3ee); color:#00111a; border:none; }
 .badge { border:1px solid rgba(15,23,42,0.06); padding:6px 10px; border-radius:999px; font-size:12px; color:var(--muted); background: rgba(15,23,42,0.02); }
@@ -42,7 +49,7 @@ body { margin:0; min-height:100vh; font-family: ui-sans-serif, system-ui, -apple
 .participant { display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border:1px solid rgba(2,6,23,0.04); border-radius:8px; background: #d2d2d263; }
 
 /* participant-card used in Room.jsx for participant tiles -- keep compact */
-.participant-card { display:flex; align-items:center; gap:6px; padding:4px 6px; border-radius:8px; border:1px solid rgba(2,6,23,0.04); background: #ffffff; width:100px; max-width:110px; flex: 0 0 160px; }
+.participant-card { display:flex; align-items:center; gap:6px; padding:4px 6px; border-radius:8px; border:1px solid rgba(2,6,23,0.04); background: #ffffff; width:100px; max-width:100px; flex: 0 0 160px; }
 .participant-card .p-info { display:flex; flex-direction:column; min-width:0; }
 .participant-card .p-name { font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:90px; }
 .participant-card .p-status { font-size:12px; color:var(--muted); }
@@ -62,7 +69,7 @@ body { margin:0; min-height:100vh; font-family: ui-sans-serif, system-ui, -apple
   color: var(--muted);
 }
 .small { font-size:12px; color:var(--muted); }
-.header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:4px; }
+.header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
 .kicker { color:var(--muted); font-size:14px; }
 .footer { display:flex; gap:8px; flex-wrap: wrap; }
 .copy { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas; }
@@ -165,6 +172,6 @@ body { margin:0; min-height:100vh; font-family: ui-sans-serif, system-ui, -apple
 :root .btn,
 :root .cardBtn {
   color: var(--bs-btn-disabled-color);
-  background-color: var(--bs-btn-disabled-bg);
-  border-color: #f6fafb;
+  background-color: rgb(34, 211, 238);
+  border-color: #838383;
 }

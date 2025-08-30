@@ -1130,3 +1130,72 @@
   transform: translateY(-4px);
   outline: none;
 }
+
+/* Invite / Copy Code / Leave button hover styles (theme-aware) */
+.room-container .btn,
+.room-container .btn-icon,
+.room-container .btn-outline-secondary {
+  transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease, border-color .12s ease;
+}
+
+/* shared hover baseline */
+.room-container .btn:hover,
+.room-container .btn-icon:hover,
+.room-container .btn-outline-secondary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(2,6,23,0.08);
+}
+
+/* Light mode: soft lift with pale border and subtle background tint */
+:root[data-theme='light'] .room-container .btn:hover,
+:root[data-theme='light'] .room-container .btn-icon:hover,
+:root[data-theme='light'] .room-container .btn-outline-secondary:hover {
+  background: linear-gradient(180deg, rgba(15,23,42,0.02), rgba(15,23,42,0.01));
+  border-color: rgba(15,23,42,0.10);
+  color: var(--ink);
+  box-shadow: 0 10px 26px rgba(2,6,23,0.06), 0 4px 10px rgba(2,6,23,0.04);
+}
+
+/* Dark mode: soft glow, cooler tint and lighter border */
+[data-theme='dark'] .room-container .btn:hover,
+[data-theme='dark'] .room-container .btn-icon:hover,
+[data-theme='dark'] .room-container .btn-outline-secondary:hover {
+  background: rgba(255,255,255,0.02); /* subtle lightening */
+  border-color: rgba(255,255,255,0.06);
+  color: var(--ink);
+  box-shadow: 0 10px 22px rgba(2,6,23,0.28), 0 4px 12px rgba(34,211,238,0.04);
+}
+
+/* Invite icon-specific accent when hovering to emphasize action */
+.room-container .btn-icon:hover {
+  border-radius: 10px;
+}
+:root[data-theme='light'] .room-container .btn-icon:hover { outline: none; }
+[data-theme='dark'] .room-container .btn-icon:hover { outline: none; }
+
+/* Leave button: emphasize with a warm/red tint on hover for destructive action */
+.room-container .btn-outline-secondary:hover.leave-warn,
+.room-container .btn-outline-secondary.leave-warn:hover {
+  transform: translateY(-3px) scale(1.01);
+}
+:root[data-theme='light'] .room-container .btn-outline-secondary.leave-warn:hover {
+  background: linear-gradient(180deg, rgba(255,75,75,0.06), rgba(255,75,75,0.02));
+  border-color: rgba(255,75,75,0.14);
+  color: #2d2d2d;
+  box-shadow: 0 8px 20px rgba(255,75,75,0.06);
+}
+[data-theme='dark'] .room-container .btn-outline-secondary.leave-warn:hover {
+  background: linear-gradient(180deg, rgba(255,75,75,0.03), rgba(255,75,75,0.01));
+  border-color: rgba(255,75,75,0.12);
+  color: #676767;
+  box-shadow: 0 8px 18px rgba(255,75,75,0.08);
+}
+
+/* Accessibility: make hover states visible when focused via keyboard */
+.room-container .btn:focus-visible,
+.room-container .btn-icon:focus-visible,
+.room-container .btn-outline-secondary:focus-visible {
+  box-shadow: 0 0 0 4px rgba(34,211,238,0.08);
+  transform: translateY(-2px);
+  outline: none;
+}

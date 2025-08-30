@@ -1352,19 +1352,19 @@ export default function Room({ roomId, name, onLeave }) {
               <div className="small">Room :</div>
               <div className="copy" style={{ fontSize: 20, marginRight: '8px' }}>{roomId}</div>
               <button
-                className="btn-icon btn btn-sm btn-outline-secondary"
-                onClick={() => {
-                  const inviteLink = `${window.location.origin}/room/${roomId}`;
-                  navigator.clipboard.writeText(inviteLink);
-                  setToastMessage('Invite link copied to clipboard!');
-                  // reactivate if this user was reveal-offline
-                  try { if (user && user.uid) { set(ref(db, `rooms/${roomId}/participants/${user.uid}/revealOffline`), null); set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedAt`), false); } } catch(e){}
-                }}
-                style={{ display: 'flex', alignItems: 'center', padding: '4px' }}
-              >
-                <img src="/invite-icon.svg" alt="Invite" style={{ width: '16px', height: '16px', marginRight: '4px' }} />
-                Invite
-              </button>
+                 className="btn-icon btn btn-sm btn-outline-secondary"
+                 onClick={() => {
+                   const inviteLink = `${window.location.origin}/room/${roomId}`;
+                   navigator.clipboard.writeText(inviteLink);
+                   setToastMessage('Invite link copied to clipboard!');
+                   // reactivate if this user was reveal-offline
+                   try { if (user && user.uid) { set(ref(db, `rooms/${roomId}/participants/${user.uid}/revealOffline`), null); set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedAt`), false); } } catch(e){}
+                 }}
+                 style={{ display: 'flex', alignItems: 'center', padding: '4px' }}
+               >
+                 <img src="/invite-icon.svg" alt="Invite" style={{ width: '16px', height: '16px', marginRight: '4px' }} />
+                 Invite
+               </button>
 
               {/* Toast Notification */}
               {toastMessage && (
@@ -1385,7 +1385,7 @@ export default function Room({ roomId, name, onLeave }) {
             </div>
             <div className="actions">
               <button
-                className="btn"
+                className="btn btn-icon"
                 onClick={() => {
                   navigator.clipboard.writeText(roomId);
                   setToastMessage('Room code copied to clipboard!');
@@ -1396,7 +1396,7 @@ export default function Room({ roomId, name, onLeave }) {
                 Copy Code
               </button>
               <button
-                className="btn btn-outline-secondary"
+                className="btn btn-outline-secondary leave-warn"
                 disabled={isLeaving}
                 onClick={async () => {
                   // Mark as explicitly left immediately to prevent the auto-rejoin
@@ -1588,6 +1588,7 @@ export default function Room({ roomId, name, onLeave }) {
                   // no lastSeen, but explicit disconnected flag exists -> offline
                   offline = true;
                 } else {
+
                   // no signals yet (very new participant) -> assume online
                   offline = false;
                 }

@@ -86,20 +86,20 @@
 
 /* Light Theme */
 :root[data-theme='light'] {
-  --background-color: #ffffff;
-  --text-color: #000000;
-  --card-background: #f9f9f9;
-  --button-background: #007bff;
-  --button-text: #ffffff;
+  --background-color: #f6f8fb;
+  --text-color: #0f1724;
+  --card-background: #ffffff;
+  --button-background: #0ea5e9;
+  --button-text: #00111a;
 }
 
 /* Dark Theme */
 :root[data-theme='dark'] {
-  --background-color: #121212;
-  --text-color: #ffffff;
-  --card-background: #1e1e1e;
-  --button-background: #bb86fc;
-  --button-text: #000000;
+  --background-color: #0b1220; /* soft deep navy */
+  --text-color: #e6eef6;
+  --card-background: #0f1724; /* card slightly lighter */
+  --button-background: #22d3ee;
+  --button-text: #00111a;
 }
 
 /* Apply Theme Variables */
