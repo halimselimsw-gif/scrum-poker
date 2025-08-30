@@ -6,6 +6,11 @@ import './room.css'
 import { v4 as uuidv4 } from 'uuid'; // Import UUID library
 const CARDS = ['0','1','2','3','5','8','13','21','34', '55','89','?','♾','☕']
 
+// Heartbeat interval in ms: write participant.lastSeen every HEARTBEAT_MS
+// and consider a participant offline after HEARTBEAT_MS * OFFLINE_MULTIPLIER.
+const HEARTBEAT_MS = 5000; // 5s writes
+const OFFLINE_MULTIPLIER = 3; // consider offline after 3 missed heartbeats (~15s)
+
 const DELETE_GRACE_MS = 30 * 1000; // 30s grace before deleting room after moderator disconnect
 
 // avatar havuzu (10 adet). İsterseniz emoji'leri değiştirin.
@@ -73,6 +78,7 @@ export default function Room({ roomId, name, onLeave }) {
 
   // joined: kullanıcı room participants'a eklenmiş mi?
   const [joined, setJoined] = useState(false)
+  const [roomMissing, setRoomMissing] = useState(false);
   const [user, setUser] = useState(null)
   const [room, setRoom] = useState(null)
   const [myVote, setMyVote] = useState(null)
@@ -81,7 +87,13 @@ export default function Room({ roomId, name, onLeave }) {
   const [isOffline, setIsOffline] = useState(() => !navigator.onLine)
   const [timer, setTimer] = useState({ hours: 0, minutes: 0, seconds: 0 })
   const [toastMessage, setToastMessage] = useState(null);
+  const [isLeaving, setIsLeaving] = useState(false);
+  // keep a short-lived client-side list of participant UIDs that explicitly
+  // left (leftAt) so we can hide them stably in the UI and avoid flicker when
+  // the remote node lingers or is updated concurrently.
+  const [hiddenLeftUids, setHiddenLeftUids] = useState([]);
   const navigate = useNavigate()
+  const initRoomRef = useRef(null);
   const roomRef = useMemo(() => ref(db, `rooms/${roomId}`), [roomId])
   const pRef = useMemo(() => user ? ref(db, `rooms/${roomId}/participants/${user.uid}`) : null, [roomId, user])
 
@@ -146,30 +158,28 @@ export default function Room({ roomId, name, onLeave }) {
       // Removing the whole room should only be set by the moderator.
       if (pRef) {
         try {
-          // Instead of removing the participant node on disconnect (which can be triggered
-          // by transient network issues or VPN), set a disconnectedAt timestamp so we can
-          // distinguish explicit leaves from transient disconnects.
-          try {
-            // Write both disconnectedAt and disconnectedSession so we can ignore
-            // stale disconnects that belong to a previous session.
-            const discAtPath = `rooms/${roomId}/participants/${user.uid}/disconnectedAt`;
-            const discSessionPath = `rooms/${roomId}/participants/${user.uid}/disconnectedSession`;
-            const discAtRef = ref(db, discAtPath);
-            const discSessionRef = ref(db, discSessionPath);
-            // debug info removed
+          // Only schedule onDisconnect markers after we know the room owner.
+          // `isModerator` may be false early during init because `room` is not
+          // yet loaded; scheduling before owner is known can mark the owner
+          // as disconnected and trigger room deletion logic. Defer until
+          // `room` and `room.owner` are available.
+          if (!room || typeof room.owner === 'undefined' || room.owner === null) {
+            console.log('Deferring onDisconnect scheduling until room.owner is known for', user && user.uid);
+          } else if (room.owner === user.uid) {
+            // Current user is the moderator — do not schedule participant-level onDisconnect
+            console.log('Skipping participant onDisconnect scheduling for moderator (owner):', user && user.uid);
+          } else {
             try {
-              // write boolean true on disconnect
-              onDisconnect(discAtRef).set(true);
-            } catch(e) { console.warn('onDisconnect(discAtRef) failed', e) }
-            try {
-              onDisconnect(discSessionRef).set(sessionId);
-            } catch(e) { console.warn('onDisconnect(discSessionRef) failed', e) }
-            // onDisconnect set
-          } catch (err) {
-            console.error('onDisconnect set failed for participant.disconnectedAt/disconnectedSession:', err);
+              const discAtRef = ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedAt`);
+              const discSessRef = ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedSession`);
+              try { onDisconnect(discAtRef).set(true); } catch(e) { console.warn('onDisconnect(discAtRef) failed', e); }
+              try { onDisconnect(discSessRef).set(sessionId); } catch(e) { console.warn('onDisconnect(discSessRef) failed', e); }
+            } catch (e) {
+              console.warn('Failed to schedule onDisconnect markers for participant:', user && user.uid, e);
+            }
           }
         } catch (err) {
-          console.error('Failed to set onDisconnect for participant.disconnectedAt:', err);
+          console.error('Failed to set onDisconnect markers for participant:', err);
         }
       } else {
         console.warn('pRef not available yet; participant onDisconnect not set (user:', user && user.uid, ')');
@@ -237,7 +247,7 @@ export default function Room({ roomId, name, onLeave }) {
     };
 
   let mounted = true;
-    (async () => {
+    const initRoom = async () => {
       try {
         // helper: get with retries to handle transient network/permission blips
         const getWithRetry = async (attempts = 5, baseDelay = 200) => {
@@ -255,16 +265,13 @@ export default function Room({ roomId, name, onLeave }) {
         };
 
         const snap = await getWithRetry(5, 150);
-        // initial room data fetched (or null after retries)
 
-        // Do not create a room implicitly here. If the room doesn't exist after
-        // several attempts, abort to avoid permission/set errors. This avoids
-        // intermittent failures where a transient DB error returns empty.
         if (!snap || !snap.exists()) {
-          console.error('Room does not exist after retries; aborting owner-assign to avoid creating room:', roomId);
-          setToastMessage('Room not found or temporarily unavailable. Please try again.');
-          onLeave();
-          navigate('/');
+          // Downgrade to warn: this is often transient (network/VPN) or the room
+          // was removed intentionally. Surface retry UI instead of noisy error.
+          console.warn('Room not found after retries; showing retry option for', roomId);
+          setRoomMissing(true);
+          setToastMessage('Room not found or temporarily unavailable. You can retry or create the room.');
           return;
         }
 
@@ -283,7 +290,6 @@ export default function Room({ roomId, name, onLeave }) {
             }
             await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, i)));
           }
-          // final fallback: log and continue; not critical to block user further
           console.error('owner-assign transaction failed after retries; continuing without owner assign');
         };
 
@@ -294,7 +300,11 @@ export default function Room({ roomId, name, onLeave }) {
       } catch (error) {
         console.error('Failed to initialize room:', error); // Oda başlatma hatası
       }
-    })();
+    };
+
+  // initial run
+  initRoomRef.current = initRoom;
+  initRoom();
 
     return () => {
       if (!mounted) return;
@@ -398,8 +408,13 @@ export default function Room({ roomId, name, onLeave }) {
   
 
   const participants = useMemo(() => {
-    const raw = Object.entries(room?.participants || {}).
-      map(([uid, p]) => ({ uid, ...p }));
+    // Exclude participants that have an explicit leftAt timestamp so they
+    // disappear immediately for other clients even if the node lingers.
+    // Also exclude any UIDs we've recently hidden client-side to avoid
+    // visible add/remove flicker for transient DB races.
+    const raw = Object.entries(room?.participants || {})
+      .filter(([uid, p]) => !(p && p.leftAt) && !hiddenLeftUids.includes(uid))
+      .map(([uid, p]) => ({ uid, ...p }));
 
     // Dedupe by clientId when available, otherwise by name. Keep the most
     // recently active record (by lastSeen or joinedAt) to avoid showing stale
@@ -947,7 +962,7 @@ export default function Room({ roomId, name, onLeave }) {
         try {
           const hbId = setInterval(() => {
             set(ref(db, `rooms/${roomId}/participants/${user.uid}/lastSeen`), Date.now()).catch(()=>{});
-          }, 15000);
+          }, HEARTBEAT_MS);
           window.__scrumPokerHeartbeat = window.__scrumPokerHeartbeat || {};
           window.__scrumPokerHeartbeat[user.uid] = hbId;
         } catch(e) { /* ignore */ }
@@ -958,7 +973,7 @@ export default function Room({ roomId, name, onLeave }) {
 
     // Cancel any onDisconnect for participant.disconnected and disconnectedSession
     try {
-      const discFlagPath = `rooms/${roomId}/participants/${user.uid}/disconnected`;
+      const discFlagPath = `rooms/${roomId}/participants/${user.uid}/disconnectedAt`;
       const discSessPath = `rooms/${roomId}/participants/${user.uid}/disconnectedSession`;
       const discFlagRefCancel = ref(db, discFlagPath);
       const discSessRefCancel = ref(db, discSessPath);
@@ -969,11 +984,75 @@ export default function Room({ roomId, name, onLeave }) {
     } catch (e) {
       console.warn('Failed to cancel onDisconnect for participant.disconnected/disconnectedSession', e);
     }
+    // Schedule fresh onDisconnect markers for this session so the server will
+    // mark us disconnected if our connection drops. Do not schedule for moderators.
+    try {
+      if (!isModerator) {
+        try {
+          const discAtRef = ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedAt`);
+          const discSessRef = ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedSession`);
+          const lastSeenRef = ref(db, `rooms/${roomId}/participants/${user.uid}/lastSeen`);
+          try { onDisconnect(discAtRef).set(true); } catch(e) { console.warn('onDisconnect(discAtRef) failed', e); }
+          try { onDisconnect(discSessRef).set(sessionId); } catch(e) { console.warn('onDisconnect(discSessRef) failed', e); }
+          try { onDisconnect(lastSeenRef).set(Date.now()); } catch(e) { console.warn('onDisconnect(lastSeen) failed', e); }
+        } catch(e) {
+          console.warn('Failed to schedule onDisconnect markers after join for participant:', user && user.uid, e);
+        }
+      }
+    } catch(e) {}
       try { localStorage.setItem('scrum-poker-name', displayName) } catch(e){}
       setJoined(true)
-    } catch (e) {
-      console.error('Join failed', e)
-    }
+      // If we had previously marked leftAt or set an explicit-left flag in this
+      // browser session, clear them so a rejoin shows up immediately.
+      try {
+        const leftKey = `scrum-poker-left:${roomId}:${clientId}`;
+        try { sessionStorage.removeItem(leftKey); } catch(e) {}
+        // Try a transaction to cleanly remove left markers and update presence
+        try {
+          const partRef = ref(db, `rooms/${roomId}/participants/${user.uid}`);
+          const tx = await runTransaction(partRef, (cur) => {
+            if (!cur) {
+              // If participant node is missing, create a clean one
+              return {
+                name: displayName,
+                vote: null,
+                joinedAt: Date.now(),
+                lastSeen: Date.now(),
+                disconnectedAt: false,
+                clientId,
+                sessionId
+              };
+            }
+            // remove left markers
+            if (cur.leftAt) delete cur.leftAt;
+            if (cur.leftByClient) delete cur.leftByClient;
+            if (cur.leaveError) delete cur.leaveError;
+            // ensure presence fields are set
+            cur.name = String(displayName || cur.name || '');
+            cur.clientId = clientId;
+            cur.sessionId = sessionId;
+            cur.disconnectedAt = false;
+            cur.lastSeen = Date.now();
+            return cur;
+          });
+          if (tx && tx.committed) {
+            console.log('Post-join participant transaction cleaned leftAt for', user.uid);
+          } else {
+            console.warn('Post-join participant transaction did not commit; falling back to update');
+            try {
+              await update(ref(db, `rooms/${roomId}/participants/${user.uid}`), { leftAt: null, leftByClient: null, leaveError: null, lastSeen: Date.now(), disconnectedAt: false });
+            } catch (updErr) { console.error('Fallback update failed', updErr); }
+          }
+        } catch (txErr) {
+          console.error('Post-join transaction failed, trying fallback updates:', txErr);
+          try { await update(ref(db, `rooms/${roomId}/participants/${user.uid}`), { leftAt: null, leftByClient: null, leaveError: null, lastSeen: Date.now(), disconnectedAt: false }); } catch(e) { console.error('Fallback update also failed', e); }
+        }
+        // ensure client-side hidden list doesn't keep us hidden
+        try { setHiddenLeftUids(prev => prev.filter(x => x !== user.uid)); } catch(e) {}
+       } catch(e) { console.warn('Post-join cleanup of left flags failed', e); }
+     } catch (e) {
+       console.error('Join failed', e)
+     }
   }
 
   // If we go back online and our participant entry was removed from the server,
@@ -983,12 +1062,26 @@ export default function Room({ roomId, name, onLeave }) {
     if (!user || !roomId) return;
     // only attempt if we think we previously joined
     if (!joined) return;
+
     try {
       const exists = !!room?.participants?.[user.uid];
-  if (!exists) {
-  console.log('Auto-rejoining participant after reconnect for', user.uid);
-  const pr = ref(db, `rooms/${roomId}/participants/${user.uid}`);
-  set(pr, { name: displayName, vote: null, joinedAt: Date.now(), disconnectedAt: false }).catch((e) => console.error('Auto-rejoin failed', e));
+      if (!exists) {
+        // if user explicitly left this room in this browser session, skip auto-rejoin
+        try {
+          const leftKey = `scrum-poker-left:${roomId}:${clientId}`;
+          const explicitlyLeft = sessionStorage.getItem(leftKey);
+          if (explicitlyLeft) {
+            console.log('Skipping auto-rejoin because user explicitly left this room in this tab/session:', user.uid);
+          } else {
+            console.log('Auto-rejoining participant after reconnect for', user.uid);
+            const pr = ref(db, `rooms/${roomId}/participants/${user.uid}`);
+            set(pr, { name: displayName, vote: null, joinedAt: Date.now(), disconnectedAt: false }).catch((e) => console.error('Auto-rejoin failed', e));
+          }
+        } catch (innerErr) {
+          console.warn('Auto-rejoin check failed, proceeding with auto-rejoin as fallback:', innerErr);
+          const pr = ref(db, `rooms/${roomId}/participants/${user.uid}`);
+          set(pr, { name: displayName, vote: null, joinedAt: Date.now(), disconnectedAt: false }).catch((e2) => console.error('Auto-rejoin failed', e2));
+        }
       }
     } catch (e) {
       console.error('Auto-rejoin check failed', e);
@@ -1144,7 +1237,7 @@ export default function Room({ roomId, name, onLeave }) {
       setToastMessage(null);
     }, 3000); // Hide after 3 seconds for non-offline toasts
 
-    return () => clearTimeout(timer); // Cleanup timeout on unmount or re-trigger
+    return () => clearTimeout(timer); // Cleanup timer on unmount or re-trigger
   }, [toastMessage]);
 
   useEffect(() => {
@@ -1179,6 +1272,37 @@ export default function Room({ roomId, name, onLeave }) {
   // room nesnesi null ise kullanıcıyı ana sayfaya yönlendir
   if (!room) {
     return <div className="container"><div className="card">Loading room data...</div></div>;
+  }
+
+  if (roomMissing) {
+    return (
+      <div className="container">
+        <div className="card">
+          <h3>Room not found</h3>
+          <p>The room could not be found. This may be temporary — try again.</p>
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <button className="btn" onClick={async () => { setRoomMissing(false); await new Promise(r=>setTimeout(r,50)); if (initRoomRef.current) initRoomRef.current(); }}>Retry</button>
+            <button className="btn" onClick={async () => {
+              // Safe create: only create the room root if it does not exist.
+              try {
+                await runTransaction(roomRef, (cur) => {
+                  if (cur) return; // already exists, abort
+                  return { owner: user?.uid || null, state: 'voting', participants: {} };
+                });
+                setRoomMissing(false);
+                setToastMessage('Room created successfully. Joining...');
+                await new Promise(r=>setTimeout(r,50));
+                if (initRoomRef.current) initRoomRef.current();
+              } catch (e) {
+                console.error('Failed to create room transactionally:', e);
+                setToastMessage('Failed to create room');
+              }
+            }}>Create Room</button>
+            <button className="btn btn-ghost" onClick={() => { navigate('/'); }}>Leave</button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   // Davet linkini oluşturmak için bir state ekleyelim
@@ -1273,21 +1397,153 @@ export default function Room({ roomId, name, onLeave }) {
               </button>
               <button
                 className="btn btn-outline-secondary"
+                disabled={isLeaving}
                 onClick={async () => {
-                  onLeave();
-                  try {
-                    if (isModerator) {
-                      remove(roomRef);
-                    } else {
-                      remove(ref(db, `rooms/${roomId}/participants/${user.uid}`));
+                  // Mark as explicitly left immediately to prevent the auto-rejoin
+                  // effect from recreating our participant node during cleanup
+                  try { sessionStorage.setItem(`scrum-poker-left:${roomId}:${clientId}`, '1'); } catch(e) {}
+                  try { setJoined(false); } catch(e) {}
+                  setIsLeaving(true);
+                   try {
+                     if (isModerator) {
+                       await remove(roomRef);
+                       const participantsRef = ref(db, `rooms/${roomId}/participants`);
+                       await remove(participantsRef); // Ensure all participants are removed
+                     } else {
+                      // Cancel scheduled onDisconnect writes for this participant (best-effort)
+                      try {
+                        const discFlagRef = ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedAt`);
+                        const discSessRef = ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedSession`);
+                        try { const od1 = onDisconnect(discFlagRef); if (od1 && typeof od1.cancel === 'function') od1.cancel(); } catch(e) {}
+                        try { const od2 = onDisconnect(discSessRef); if (od2 && typeof od2.cancel === 'function') od2.cancel(); } catch(e) {}
+                        // also cancel any onDisconnect set on pRef root (best-effort)
+                        try { const od3 = onDisconnect(pRef); if (od3 && typeof od3.cancel === 'function') od3.cancel(); } catch(e) {}
+                      } catch (e) { /* ignore */ }
+
+                      // Try removing participant node with retries and verify removal
+                      // Mark leftAt so other clients hide us immediately while we attempt removal
+                      try {
+                        // prefer a narrow update (less likely to be rejected than set/remove)
+                        await update(ref(db, `rooms/${roomId}/participants/${user.uid}`), { leftAt: Date.now() });
+                        // add to client-side hidden list to avoid flicker while removal propagates
+                        try { setHiddenLeftUids(prev => Array.from(new Set([...prev, user.uid]))); } catch(e){}
+                      } catch (e) {
+                        console.error('Failed to write leftAt via update for participant on leave:', user && user.uid, e && (e.code || e.message || e.toString()));
+                      }
+                      const target = ref(db, `rooms/${roomId}/participants/${user.uid}`);
+                      let removed = false;
+                      let lastErr = null;
+                      for (let attempt = 1; attempt <= 3; attempt++) {
+                        try {
+                          await remove(target);
+                          // verify
+                          const verify = await get(target);
+                          if (!verify.exists()) {
+                            removed = true;
+                            break;
+                          }
+                        } catch (e) {
+                          lastErr = e;
+                          console.error('remove attempt', attempt, 'failed for participant on leave:', user && user.uid, e && (e.code || e.message || e.toString()));
+                        }
+                        await new Promise(r => setTimeout(r, 120 * attempt));
+                      }
+
+                      if (!removed) {
+                        // Fallback: run a transaction on the room root to ensure participant key is removed
+                        try {
+                          await runTransaction(roomRef, (cur) => {
+                            if (!cur || !cur.participants) return cur;
+                            if (cur.participants[user.uid]) delete cur.participants[user.uid];
+                            return cur;
+                          });
+                          // verify again
+                          const verify2 = await get(target);
+                          if (!(verify2 && verify2.exists())) removed = true;
+                        } catch (txErr) {
+                          console.error('Fallback transaction to remove participant failed:', txErr, 'lastErr:', lastErr && (lastErr.code || lastErr.message || lastErr.toString()));
+                        }
+                      }
+
+                      // If still present, attempt a final narrow write to mark left and record failure details so the UI hides the participant
+                      if (!removed) {
+                        try {
+                          await update(ref(db, `rooms/${roomId}/participants/${user.uid}`), { leftAt: Date.now(), leftByClient: true, leaveError: String(lastErr && (lastErr.message || lastErr.toString() || lastErr)) });
+                          console.warn('Marked participant with leftAt/leftByClient after failed removal attempts:', user && user.uid);
+                        } catch (finalErr) {
+                          console.error('Final fallback update to mark left failed for participant:', user && user.uid, finalErr && (finalErr.code || finalErr.message || finalErr.toString()));
+                        }
+                      }
+
+                      // Final verification loop: poll a few times to ensure other clients will see removal
+                      if (!removed) {
+                        for (let i=0;i<5;i++) {
+                          try {
+                            const v = await get(target);
+                            if (!v.exists()) { removed = true; break; }
+                          } catch(e) {}
+                          await new Promise(r=>setTimeout(r,200));
+                        }
+                      }
+
+                      // Aggressive cleanup: remove any remaining references to this uid
+                      try {
+                        // Attempt transactional cleanup on the room root to remove any keys
+                        // referencing this participant (participants, kicks, removedParticipants).
+                        await runTransaction(roomRef, (cur) => {
+                          if (!cur) return cur;
+                          try {
+                            if (cur.participants && cur.participants[user.uid]) delete cur.participants[user.uid];
+                          } catch(e) {}
+                          try {
+                            if (cur.kicks && cur.kicks[user.uid]) delete cur.kicks[user.uid];
+                          } catch(e) {}
+                          try {
+                            if (cur.removedParticipants && cur.removedParticipants[user.uid]) delete cur.removedParticipants[user.uid];
+                          } catch(e) {}
+                          return cur;
+                        });
+
+                        // Narrow removes as a best-effort fallback (less likely to be blocked by rules than root writes)
+                        try { await remove(ref(db, `rooms/${roomId}/participants/${user.uid}`)); } catch(e) {}
+                        try { await remove(ref(db, `rooms/${roomId}/kicks/${user.uid}`)); } catch(e) {}
+                        try { await remove(ref(db, `rooms/${roomId}/removedParticipants/${user.uid}`)); } catch(e) {}
+                        // Also attempt to clear any tombstone-like leftAt markers (if present elsewhere)
+                        try { await update(ref(db, `rooms/${roomId}/participants/${user.uid}`), { leftAt: null, leftByClient: null, leaveError: null }).catch(()=>{}); } catch(e) {}
+                      } catch (cleanupErr) {
+                        console.warn('Post-leave aggressive cleanup failed', cleanupErr);
+                      }
+
+                      if (!removed) {
+                        console.warn('Participant node still present after leave attempts; it may appear briefly to others:', user.uid, roomId, lastErr);
+                        setToastMessage('Leave attempted but remote participant node could not be removed immediately; it will be hidden in the UI. If it persists please ask the moderator to remove it.');
+                      }
+                      // schedule clearing hidden flag after a short window so if the
+                      // participant truly rejoins later they will reappear normally
+                      try {
+                        setTimeout(() => {
+                          setHiddenLeftUids(prev => prev.filter(x => x !== user.uid));
+                        }, 5000);
+                      } catch(e) {}
                     }
+
                     // clear heartbeat if present
                     try { clearInterval(window.__scrumPokerHeartbeat && window.__scrumPokerHeartbeat[user.uid]) } catch (e) {}
-                    setTimeout(() => {
-                      window.location.href = "/"
-                    }, 100)
+
+                    // prevent auto-rejoin from recreating our participant after explicit leave
+                    try { setJoined(false); } catch (e) { /* ignore */ }
+                    try { sessionStorage.setItem(`scrum-poker-left:${roomId}:${clientId}`, '1'); } catch(e) {}
+
+                    try { onLeave(); } catch (e) {}
+                    setTimeout(() => { window.location.href = "/" }, 100);
                   } catch (e) {
-                    console.error(e);
+                    console.error('Leave handler failed:', e);
+                    try { setJoined(false); } catch (er) {}
+                    try { sessionStorage.setItem(`scrum-poker-left:${roomId}:${clientId}`, '1'); } catch(e) {}
+                    try { onLeave(); } catch (er) {}
+                    setTimeout(() => { window.location.href = "/" }, 100);
+                  } finally {
+                    setIsLeaving(false);
                   }
                 }}
               >
@@ -1312,7 +1568,8 @@ export default function Room({ roomId, name, onLeave }) {
                 // determine offline: prefer recent lastSeen over disconnectedAt.
                 // If lastSeen exists and is recent => online even if disconnectedAt was set earlier.
                 // If lastSeen missing but disconnectedAt exists => consider offline.
-                const OFFLINE_MS = 45 * 1000; // 45s threshold (heartbeat ~15s)
+                // If both are missing, consider online (new participant).
+                const OFFLINE_MS = HEARTBEAT_MS * OFFLINE_MULTIPLIER; // threshold based on heartbeat
                 const now = Date.now();
                 const lastSeen = p.lastSeen || null;
                 // accept either the new boolean flag or the old timestamp field
@@ -1428,13 +1685,13 @@ export default function Room({ roomId, name, onLeave }) {
                 {room.state === 'revealed' && averageVote ? (
                   <div className="participant" style={{ flex: '1 1 40px' }}>
                     <div>Average: {averageVote.avg}</div>
-                    <div style={{ fontWeight: 500 }}>Rounded: {averageVote.rounded}</div>
+                    <div style={{ fontWeight:  500 }}>Rounded: {averageVote.rounded}</div>
                   </div>
                 ) : (
                   // Reserve the same space for non-moderator participants so the
                   // "Choose your card" area doesn't shift when results appear.
                   (!isModerator ? (
-                    <div className="participant placeholder" aria-hidden="true" style={{ flex: '1 1 40px' }} />
+                    <div className="participant placeholder" aria-hidden="true" style={{ flex: '1  1 40px' }} />
                   ) : null)
                 )}
               </div>

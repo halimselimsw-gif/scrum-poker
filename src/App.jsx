@@ -9,6 +9,33 @@ const randomRoom = () => Math.random().toString(36).slice(2, 8).toUpperCase()
 
 
 export default function App(){
+  // Helper: run a transaction with retries to reduce transient failures
+  const runTransactionWithRetry = async (rRef, updater, attempts = 3, baseDelay = 150) => {
+    for (let i = 0; i < attempts; i++) {
+      try {
+        await runTransaction(rRef, updater);
+        return true;
+      } catch (e) {
+        console.error('runTransactionWithRetry attempt', i + 1, 'failed for', rRef && rRef.path ? rRef.path.toString() : rRef, e && (e.message || e.toString()));
+        await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, i)));
+      }
+    }
+    return false;
+  };
+
+  const getWithRetry = async (rRef, attempts = 4, baseDelay = 150) => {
+    for (let i = 0; i < attempts; i++) {
+      try {
+        const { get } = await import('firebase/database');
+        const snap = await get(rRef);
+        return snap;
+      } catch (e) {
+        console.error('getWithRetry attempt', i + 1, 'failed for', rRef && rRef.path ? rRef.path.toString() : rRef, e && (e.message || e.toString()));
+        await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, i)));
+      }
+    }
+    return null;
+  };
    const [user, setUser] = useState(null)
    const [mode, setMode] = useState('home')
    const [roomId, setRoomId] = useState(() => {
@@ -118,34 +145,72 @@ useEffect(() => {
 }, []);
 
 useEffect(() => {
-    const updateRoomState = async () => {
-    const rRef = ref(db, `rooms/${roomId}`);
-    try {
-      // ensure room exists before running a transaction that assumes it
-      const { get } = await import('firebase/database');
-      const snap = await get(rRef);
-      if (!snap || !snap.exists()) {
-        console.warn('updateRoomState: room not found, skipping initial state set for', roomId);
-        return;
-      }
-
-      await runTransaction(rRef, (current) => {
-        if (current && !current.state) {
-          return { ...current, state: 'voting' };
+    const getWithRetry = async (rRef, attempts = 4, baseDelay = 150) => {
+      for (let i = 0; i < attempts; i++) {
+        try {
+          const { get } = await import('firebase/database');
+          const snap = await get(rRef);
+          return snap;
+        } catch (e) {
+          console.error('getWithRetry attempt', i + 1, 'failed for', rRef && rRef.path ? rRef.path.toString() : rRef, e && (e.message || e.toString()));
+          await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, i)));
         }
-        return current;
-      });
-    } catch (e) {
-      console.error('Failed to update room state:', e && (e.message || e.toString()), {
-        roomId,
-        stack: e && e.stack
-      });
-    }
-  };
+      }
+      return null;
+    };
 
-  if (roomId) {
-    updateRoomState();
-  }
+    const runTransactionWithRetry = async (rRef, updater, attempts = 3, baseDelay = 150) => {
+      for (let i = 0; i < attempts; i++) {
+        try {
+          await runTransaction(rRef, updater);
+          return true;
+        } catch (e) {
+          console.error('runTransactionWithRetry attempt', i + 1, 'failed for', rRef && rRef.path ? rRef.path.toString() : rRef, e && (e.message || e.toString()));
+          await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, i)));
+        }
+      }
+      return false;
+    };
+
+    const updateRoomState = async () => {
+      const rRef = ref(db, `rooms/${roomId}`);
+      try {
+        const snap = await getWithRetry(rRef);
+        if (!snap || !snap.exists()) {
+          console.warn('updateRoomState: room not found, skipping initial state set for', roomId);
+          return;
+        }
+
+        // Try a narrow transaction on the child 'state' first to reduce conflicts
+        try {
+          const stateRef = ref(db, `rooms/${roomId}/state`);
+          const ok = await runTransactionWithRetry(stateRef, (current) => {
+            if (current == null) return 'voting';
+            return current;
+          });
+          if (ok) return;
+          console.warn('Narrow state transaction failed, falling back to root transaction for', roomId);
+        } catch (narrowErr) {
+          console.error('Narrow state transaction threw an error:', narrowErr && (narrowErr.message || narrowErr.toString()), { roomId, stack: narrowErr && narrowErr.stack });
+        }
+
+        await runTransactionWithRetry(rRef, (current) => {
+          if (current && !current.state) {
+            return { ...current, state: 'voting' };
+          }
+          return current;
+        });
+      } catch (e) {
+        console.error('Failed to update room state:', e && (e.message || e.toString()), {
+          roomId,
+          stack: e && e.stack
+        });
+      }
+    };
+
+    if (roomId) {
+      updateRoomState();
+    }
 }, [roomId]);
 
 const updateRoomState = async (newState) => {
@@ -156,11 +221,35 @@ const updateRoomState = async (newState) => {
     }
     const rRef = ref(db, `rooms/${roomId}`);
     console.log('Running transaction to set room state ->', newState, 'for', roomId);
-    await runTransaction(rRef, (current) => {
+    const ok = await runTransactionWithRetry(rRef, (current) => {
       if (!current) return current;
       current.state = newState;
       return current;
     });
+    if (!ok) {
+      console.warn('runTransactionWithRetry failed, attempting narrow fallback set/update for state');
+      try {
+        // Try a narrow update to the child 'state' to avoid root transaction issues
+        const { set } = await import('firebase/database');
+        const stateRef = ref(db, `rooms/${roomId}/state`);
+        // ensure the node exists before set
+        const { get } = await import('firebase/database');
+        const snap = await get(ref(db, `rooms/${roomId}`));
+        if (snap && snap.exists()) {
+          try {
+            await set(stateRef, newState);
+            console.log('Fallback set of rooms/<roomId>/state succeeded');
+          } catch (e) {
+            console.warn('Fallback set failed, trying update on parent', e && (e.message || e.toString()));
+            try { await update(ref(db, `rooms/${roomId}`), { state: newState }); console.log('Fallback update succeeded'); } catch (e2) { throw e2; }
+          }
+        } else {
+          console.warn('Fallback skipped: room does not exist during fallback set/update for', roomId);
+        }
+      } catch (fallbackErr) {
+        console.error('Fallback write for room state also failed:', fallbackErr && (fallbackErr.message || fallbackErr.toString()), { roomId, newState, stack: fallbackErr && fallbackErr.stack });
+      }
+    }
     console.log('Room state transaction completed:', newState);
   } catch (error) {
     console.error('Failed to update room state via transaction:', error && (error.message || error.toString()), {
