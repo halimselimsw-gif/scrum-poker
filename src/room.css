@@ -645,11 +645,93 @@
 
 /* Şaşırma ikonu için stil güncellemesi */
 .surprise-icon {
-  margin-left: 8px;
-  font-size: 2.9em; /* Daha büyük boyut */
-  color: orange;
-  display: block; /* İsmin üstüne taşımak için */
-  margin-bottom: 4px; /* İsmin üstünde biraz boşluk bırak */
+  display: inline-block;
+  font-size: 14px;
+  color: #fff;
+  background: #ff8a00;
+  padding: 4px 8px;
+  border-radius: 14px;
+  line-height: 1;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  z-index: 50;
+}
+
+/* Participant card fixed height to prevent vertical shift when icons appear */
+.participant-card {
+  min-height: 112px; /* matches card visual (92px) + padding */
+  box-sizing: border-box;
+}
+
+/* p-info column: reserve a small top area for the surprise icon so name doesn't move */
+.participant-card .p-info {
+  position: relative;
+}
+.participant-card .p-name {
+  display: block;
+  padding-top: 2px; /* small spacing from top */
+}
+.participant-card .surprise-icon {
+  position: absolute;
+  left: -3px;
+  top: -154px; /* align with kick button vertical offset */
+  transform: translateY(0);
+}
+
+/* speech-bubble tail */
+.participant-card .surprise-icon::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 100%;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 8px solid #fff; /* tail uses bubble background color */
+}
+
+/* Dark-theme variant */
+[data-theme='dark'] .participant-card .surprise-icon {
+  background: #fff8ea;
+  color: #071017;
+}
+[data-theme='dark'] .participant-card .surprise-icon::after {
+  border-top-color: #fff8ea;
+}
+
+/* Make bubble more cornered / rectangular like the attachment */
+.participant-card .surprise-icon {
+  background: #ffffff;
+  color: #08141a;
+  border: 1px solid rgba(2,6,23,0.08);
+  padding: 6px 10px;
+  border-radius: 6px; /* small radius for slightly cornered look */
+  font-size: 20px;
+  min-width: 40px;
+  text-align: center;
+}
+
+/* Tail border (outline) to match bubble border - create using ::before */
+.participant-card .surprise-icon::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 100%;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid rgba(2,6,23,0.08); /* border color */
+  transform: translateY(1px);
+}
+
+/* Then the white inner tail (on top) */
+.participant-card .surprise-icon::after {
+  left: 12px;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 7px solid #fff;
+  top: calc(100% - 1px);
 }
 
 /* Responsive styles for Room info and Leave button row */

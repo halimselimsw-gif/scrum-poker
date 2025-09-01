@@ -332,16 +332,30 @@ export default function Room({ roomId, name, onLeave }) {
     }
     setMyVote(value);
     try {
-      // Ensure presence flag cleared when the user takes an action (vote)
+      // Best-effort: cancel any scheduled onDisconnects (do not await)
       try {
-        await set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedAt`), false);
-        // clear reveal-offline marker so this user returns online
-        await set(ref(db, `rooms/${roomId}/participants/${user.uid}/revealOffline`), null);
+        const cur = partOnDiscRef.current || {};
+        if (cur.odAt && typeof cur.odAt.cancel === 'function') cur.odAt.cancel().catch(()=>{});
+        if (cur.odSess && typeof cur.odSess.cancel === 'function') cur.odSess.cancel().catch(()=>{});
+        if (cur.odLast && typeof cur.odLast.cancel === 'function') cur.odLast.cancel().catch(()=>{});
       } catch (e) { /* ignore */ }
 
-      await set(ref(db, `rooms/${roomId}/participants/${user.uid}/vote`), value);
+      // Single atomic update: write vote + presence in one call to reduce round-trips
+      const now = Date.now();
+      const pBaseRef = ref(db, `rooms/${roomId}/participants/${user.uid}`);
+      const payload = { vote: value, lastSeen: now, disconnectedAt: false, disconnectedSession: null, revealOffline: null };
+      try {
+        await safeUpdate(pBaseRef, payload);
+      } catch (e) {
+        // fallback: minimal writes
+        try { await set(ref(db, `rooms/${roomId}/participants/${user.uid}/vote`), value); } catch (errVote) { console.error('Failed to set vote directly:', errVote); }
+        try { await set(ref(db, `rooms/${roomId}/participants/${user.uid}/lastSeen`), now); } catch(_){ }
+        try { await set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedAt`), false); } catch(_){ }
+        try { await set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedSession`), null); } catch(_){ }
+        try { await set(ref(db, `rooms/${roomId}/participants/${user.uid}/revealOffline`), null); } catch(_){ }
+      }
     } catch (error) {
-      console.error('Failed to cast vote via set():', error); // Oy kullanma hatası
+      console.error('Failed to cast vote:', error);
     }
   }
 
@@ -356,7 +370,6 @@ export default function Room({ roomId, name, onLeave }) {
           for (const [uid, p] of Object.entries(current.participants)) {
             // skip the room owner (moderator) — don't mark them offline
             if (current.owner && uid === current.owner) continue;
-            // if participant hasn't voted (null/undefined/empty) mark them as revealOffline
             if (!p || p.vote === null || p.vote === undefined || p.vote === '') {
               current.participants[uid] = Object.assign({}, p, { revealOffline: true, disconnectedAt: true });
             }
@@ -413,7 +426,7 @@ export default function Room({ roomId, name, onLeave }) {
     // Also exclude any UIDs we've recently hidden client-side to avoid
     // visible add/remove flicker for transient DB races.
     const raw = Object.entries(room?.participants || {})
-      .filter(([uid, p]) => !(p && p.leftAt) && !hiddenLeftUids.includes(uid))
+      .filter(([uid, p]) => !(p && p.leftAt) && !hiddenLeftUids.includes(uid) && !(room?.removedParticipants && room.removedParticipants[uid]))
       .map(([uid, p]) => ({ uid, ...p }));
 
     // Dedupe by clientId when available, otherwise by name. Keep the most
@@ -433,7 +446,7 @@ export default function Room({ roomId, name, onLeave }) {
     const out = Array.from(mapByKey.values());
     out.sort((a,b)=> (a.joinedAt||0)-(b.joinedAt||0));
     return out;
-  }, [room?.participants])
+  }, [room?.participants, room?.removedParticipants, hiddenLeftUids])
 
   // sadece anlamlı oy değerlerini al (null/undefined/empty atla)
   const votes = participants.map(p => p.vote).filter(v => v !== null && v !== undefined && v !== '')
@@ -1422,109 +1435,37 @@ export default function Room({ roomId, name, onLeave }) {
 
                       // Try removing participant node with retries and verify removal
                       // Mark leftAt so other clients hide us immediately while we attempt removal
-                      try {
-                        // prefer a narrow update (less likely to be rejected than set/remove)
-                        await update(ref(db, `rooms/${roomId}/participants/${user.uid}`), { leftAt: Date.now() });
-                        // add to client-side hidden list to avoid flicker while removal propagates
+                        // Optimized fast-exit: mark left immediately and navigate; run cleanup async
+                        const nowTs = Date.now();
+                        try {
+                          await update(ref(db, `rooms/${roomId}/participants/${user.uid}`), { leftAt: nowTs, leftByClient: true });
+                        } catch(e) {
+                          try { await set(ref(db, `rooms/${roomId}/participants/${user.uid}/leftAt`), nowTs); } catch(_){}
+                          try { await set(ref(db, `rooms/${roomId}/participants/${user.uid}/leftByClient`), true); } catch(_){}
+                        }
                         try { setHiddenLeftUids(prev => Array.from(new Set([...prev, user.uid]))); } catch(e){}
-                      } catch (e) {
-                        console.error('Failed to write leftAt via update for participant on leave:', user && user.uid, e && (e.code || e.message || e.toString()));
-                      }
-                      const target = ref(db, `rooms/${roomId}/participants/${user.uid}`);
-                      let removed = false;
-                      let lastErr = null;
-                      for (let attempt = 1; attempt <= 3; attempt++) {
-                        try {
-                          await remove(target);
-                          // verify
-                          const verify = await get(target);
-                          if (!verify.exists()) {
-                            removed = true;
-                            break;
+
+                        // Fire-and-forget intensive cleanup so user's leave isn't blocked
+                        (async () => {
+                          const target = ref(db, `rooms/${roomId}/participants/${user.uid}`);
+                          try {
+                            try { await remove(target); } catch(e) {}
+                            // best-effort transactional cleanup
+                            await runTransaction(roomRef, (cur) => {
+                              if (!cur) return cur;
+                              try { if (cur.participants && cur.participants[user.uid]) delete cur.participants[user.uid]; } catch(e) {}
+                              try { if (cur.kicks && cur.kicks[user.uid]) delete cur.kicks[user.uid]; } catch(e) {}
+                              try { if (cur.removedParticipants && cur.removedParticipants[user.uid]) delete cur.removedParticipants[user.uid]; } catch(e) {}
+                              return cur;
+                            });
+                            try { await remove(ref(db, `rooms/${roomId}/kicks/${user.uid}`)); } catch(e) {}
+                            try { await remove(ref(db, `rooms/${roomId}/removedParticipants/${user.uid}`)); } catch(e) {}
+                          } catch (cleanupErr) {
+                            console.warn('Background cleanup during leave failed:', cleanupErr);
                           }
-                        } catch (e) {
-                          lastErr = e;
-                          console.error('remove attempt', attempt, 'failed for participant on leave:', user && user.uid, e && (e.code || e.message || e.toString()));
-                        }
-                        await new Promise(r => setTimeout(r, 120 * attempt));
-                      }
-
-                      if (!removed) {
-                        // Fallback: run a transaction on the room root to ensure participant key is removed
-                        try {
-                          await runTransaction(roomRef, (cur) => {
-                            if (!cur || !cur.participants) return cur;
-                            if (cur.participants[user.uid]) delete cur.participants[user.uid];
-                            return cur;
-                          });
-                          // verify again
-                          const verify2 = await get(target);
-                          if (!(verify2 && verify2.exists())) removed = true;
-                        } catch (txErr) {
-                          console.error('Fallback transaction to remove participant failed:', txErr, 'lastErr:', lastErr && (lastErr.code || lastErr.message || lastErr.toString()));
-                        }
-                      }
-
-                      // If still present, attempt a final narrow write to mark left and record failure details so the UI hides the participant
-                      if (!removed) {
-                        try {
-                          await update(ref(db, `rooms/${roomId}/participants/${user.uid}`), { leftAt: Date.now(), leftByClient: true, leaveError: String(lastErr && (lastErr.message || lastErr.toString() || lastErr)) });
-                          console.warn('Marked participant with leftAt/leftByClient after failed removal attempts:', user && user.uid);
-                        } catch (finalErr) {
-                          console.error('Final fallback update to mark left failed for participant:', user && user.uid, finalErr && (finalErr.code || finalErr.message || finalErr.toString()));
-                        }
-                      }
-
-                      // Final verification loop: poll a few times to ensure other clients will see removal
-                      if (!removed) {
-                        for (let i=0;i<5;i++) {
-                          try {
-                            const v = await get(target);
-                            if (!v.exists()) { removed = true; break; }
-                          } catch(e) {}
-                          await new Promise(r=>setTimeout(r,200));
-                        }
-                      }
-
-                      // Aggressive cleanup: remove any remaining references to this uid
-                      try {
-                        // Attempt transactional cleanup on the room root to remove any keys
-                        // referencing this participant (participants, kicks, removedParticipants).
-                        await runTransaction(roomRef, (cur) => {
-                          if (!cur) return cur;
-                          try {
-                            if (cur.participants && cur.participants[user.uid]) delete cur.participants[user.uid];
-                          } catch(e) {}
-                          try {
-                            if (cur.kicks && cur.kicks[user.uid]) delete cur.kicks[user.uid];
-                          } catch(e) {}
-                          try {
-                            if (cur.removedParticipants && cur.removedParticipants[user.uid]) delete cur.removedParticipants[user.uid];
-                          } catch(e) {}
-                          return cur;
-                        });
-
-                        // Narrow removes as a best-effort fallback (less likely to be blocked by rules than root writes)
-                        try { await remove(ref(db, `rooms/${roomId}/participants/${user.uid}`)); } catch(e) {}
-                        try { await remove(ref(db, `rooms/${roomId}/kicks/${user.uid}`)); } catch(e) {}
-                        try { await remove(ref(db, `rooms/${roomId}/removedParticipants/${user.uid}`)); } catch(e) {}
-                        // Also attempt to clear any tombstone-like leftAt markers (if present elsewhere)
-                        try { await update(ref(db, `rooms/${roomId}/participants/${user.uid}`), { leftAt: null, leftByClient: null, leaveError: null }).catch(()=>{}); } catch(e) {}
-                      } catch (cleanupErr) {
-                        console.warn('Post-leave aggressive cleanup failed', cleanupErr);
-                      }
-
-                      if (!removed) {
-                        console.warn('Participant node still present after leave attempts; it may appear briefly to others:', user.uid, roomId, lastErr);
-                        setToastMessage('Leave attempted but remote participant node could not be removed immediately; it will be hidden in the UI. If it persists please ask the moderator to remove it.');
-                      }
-                      // schedule clearing hidden flag after a short window so if the
-                      // participant truly rejoins later they will reappear normally
-                      try {
-                        setTimeout(() => {
-                          setHiddenLeftUids(prev => prev.filter(x => x !== user.uid));
-                        }, 5000);
-                      } catch(e) {}
+                          // clear hidden flag after a short grace period
+                          setTimeout(() => { try { setHiddenLeftUids(prev => prev.filter(x => x !== user.uid)); } catch(e) {} }, 5000);
+                        })();
                     }
 
                     // clear heartbeat if present
