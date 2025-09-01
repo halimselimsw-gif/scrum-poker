@@ -359,6 +359,7 @@
   padding: 0;
   background: linear-gradient(180deg, rgba(255,75,75,0.06), rgba(255,75,75,0.02));
   border: 1px solid #ff4b4b;
+  background-color: rgb(240 245 247) !important;
 /*  box-shadow:
 /*    0 0 0 3px rgba(34,211,238,0.20) inset, /* inner turquoise ring */
 /*    0 0 0 6px rgba(255,75,75,0.14),        /* outer red ring */
@@ -611,7 +612,7 @@
 }
 
 /* Ensure actions area keeps its space when buttons appear/disappear */
-.actions { min-width: 220px; display: flex; gap: 10px; align-items: center; }
+.actions { min-width: 100px; display: flex; gap: 10px; align-items: center; }
 
 /* Sayaç sağ üstte konumlandırıldı */
 .timer {

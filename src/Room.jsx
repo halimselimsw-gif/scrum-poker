@@ -1350,7 +1350,7 @@ export default function Room({ roomId, name, onLeave }) {
           </span>
         </span>
       </label>
-  <span className="theme-label">{themeState === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
+  <span className="theme-label">{themeState === 'dark' ? '   ' : '   '}</span>
       </div>
       <div className="timer theme-timer">
         <span>{timer.hours.toString().padStart(2, '0')}:</span>
@@ -1406,7 +1406,7 @@ export default function Room({ roomId, name, onLeave }) {
                 }}
               >
                 <img src="/copy-icon.svg" alt="Copy" style={{ width: '16px', height: '16px', marginRight: '4px' }} />
-                Copy Code
+                  
               </button>
               <button
                 className="btn btn-outline-secondary leave-warn"
@@ -1489,7 +1489,7 @@ export default function Room({ roomId, name, onLeave }) {
                 }}
               >
                 <img src="/leave-icon.svg" alt="Leave" style={{ width: '16px', height: '16px', marginRight: '4px' }} />
-                Leave
+                 
               </button>
             </div>
           </div>
@@ -1622,7 +1622,9 @@ export default function Room({ roomId, name, onLeave }) {
               )}
             </div>
             <div className="results">
-              <div className="small" style={{ marginBottom: 8 }}>Results</div>
+              <div className="small" style={{ marginBottom: 8 }}>
+                Results : <span style={{ color: 'var(--muted)', fontSize: 13, marginLeft: 8 }}>{votes.length}/{participants.length} voted</span>
+              </div>
               <div className="row">
                 {room.state === 'revealed' && averageVote ? (
                   <div className="participant" style={{ flex: '1 1 40px' }}>
