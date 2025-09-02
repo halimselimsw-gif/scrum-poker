@@ -118,6 +118,26 @@ export default function Room({ roomId, name, onLeave }) {
     }
   }
 
+  // Mark this participant as active right now: update lastSeen and clear disconnected markers.
+  const markActiveNow = async () => {
+    if (!user || !roomId) return;
+    const now = Date.now();
+    try {
+      await safeUpdate(ref(db, `rooms/${roomId}/participants/${user.uid}`), {
+        lastSeen: now,
+        disconnectedAt: false,
+        disconnectedSession: null,
+        revealOffline: null
+      });
+    } catch (e) {
+      // best-effort fallback
+      try { await set(ref(db, `rooms/${roomId}/participants/${user.uid}/lastSeen`), now); } catch(_){}
+      try { await set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedAt`), false); } catch(_){}
+      try { await set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedSession`), null); } catch(_){}
+      try { await set(ref(db, `rooms/${roomId}/participants/${user.uid}/revealOffline`), null); } catch(_){}
+    }
+  }
+
   useEffect(() => {
     ensureAuth()
       .then((u) => {
@@ -1366,12 +1386,12 @@ export default function Room({ roomId, name, onLeave }) {
               <div className="copy" style={{ fontSize: 20, marginRight: '8px' }}>{roomId}</div>
               <button
                  className="btn-icon btn btn-sm btn-outline-secondary"
-                 onClick={() => {
+                 onClick={async () => {
                    const inviteLink = `${window.location.origin}/room/${roomId}`;
                    navigator.clipboard.writeText(inviteLink);
                    setToastMessage('Invite link copied to clipboard!');
-                   // reactivate if this user was reveal-offline
-                   try { if (user && user.uid) { set(ref(db, `rooms/${roomId}/participants/${user.uid}/revealOffline`), null); set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedAt`), false); } } catch(e){}
+                   // mark active on interaction
+                   try { await markActiveNow(); } catch(e){}
                  }}
                  style={{ display: 'flex', alignItems: 'center', padding: '4px' }}
                >
@@ -1399,10 +1419,10 @@ export default function Room({ roomId, name, onLeave }) {
             <div className="actions">
               <button
                 className="btn btn-icon"
-                onClick={() => {
+                onClick={async () => {
                   navigator.clipboard.writeText(roomId);
                   setToastMessage('Room code copied to clipboard!');
-                  try { if (user && user.uid) { set(ref(db, `rooms/${roomId}/participants/${user.uid}/revealOffline`), null); set(ref(db, `rooms/${roomId}/participants/${user.uid}/disconnectedAt`), false); } } catch(e){}
+                  try { await markActiveNow(); } catch(e){}
                 }}
               >
                 <img src="/copy-icon.svg" alt="Copy" style={{ width: '16px', height: '16px', marginRight: '4px' }} />
@@ -1415,6 +1435,8 @@ export default function Room({ roomId, name, onLeave }) {
                   // Mark as explicitly left immediately to prevent the auto-rejoin
                   // effect from recreating our participant node during cleanup
                   try { sessionStorage.setItem(`scrum-poker-left:${roomId}:${clientId}`, '1'); } catch(e) {}
+                  // mark active just before leaving so UI doesn't flip offline incorrectly
+                  try { await markActiveNow(); } catch(e) {}
                   try { setJoined(false); } catch(e) {}
                   setIsLeaving(true);
                    try {
@@ -1522,16 +1544,25 @@ export default function Room({ roomId, name, onLeave }) {
                 // actions like Reveal/Reset when offline.
                 if (isMe) {
                   offline = !!isOffline;
-                } else if (lastSeen) {
-                  // if lastSeen is present, use it as the source of truth
-                  offline = (now - lastSeen) > OFFLINE_MS;
-                } else if (disconnectedFlag) {
-                  // no lastSeen, but explicit disconnected flag exists -> offline
-                  offline = true;
                 } else {
-
-                  // no signals yet (very new participant) -> assume online
-                  offline = false;
+                  // Moderators should not be auto-marked offline here
+                  if (room?.owner === p.uid) {
+                    offline = false;
+                  } else {
+                    // If participant has a recent lastSeen, use that
+                    if (lastSeen) {
+                      // Only mark offline when stale AND the participant has not voted
+                      const stale = (now - lastSeen) > OFFLINE_MS;
+                      const hasVote = !!p.vote;
+                      offline = stale && !hasVote;
+                    } else if (disconnectedFlag) {
+                      // no lastSeen, but explicit disconnected flag exists -> offline
+                      offline = true;
+                    } else {
+                      // no signals yet (very new participant) -> assume online
+                      offline = false;
+                    }
+                  }
                 }
                 return (
                   <div
@@ -1549,7 +1580,7 @@ export default function Room({ roomId, name, onLeave }) {
                               p.vote === '☕' ? (
                                 <div className="pause-cafe">
                                   <div className="pause-title">Pause Cafe</div>
-                                  <div className="pause-icon">☕</div>
+                                  <img src="/coffee-icon.svg" alt="Pause Cafe" className="pause-icon" />
                                 </div>
                               ) : (
                                 p.vote || '-'
@@ -1659,11 +1690,18 @@ export default function Room({ roomId, name, onLeave }) {
                     style={dealt ? { animationDelay: `${i * 70}ms`, ['--start-rot']: `${startRot}deg` } : undefined}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 150" className="card-svg">
-        <rect x="0" y="0" width="100" height="150" rx="10" ry="10" fill="white" stroke="red" strokeWidth="2" />
-        <text x="50" y="80" fontSize="36" textAnchor="middle" fill="black" fontFamily="Arial">{c}</text>
-        <text x="10" y="20" fontSize="12" fill="black" fontFamily="Arial">{c}</text>
-        <text x="80" y="135" fontSize="12" fill="black" fontFamily="Arial">{c}</text>
-      </svg>
+                      <rect x="0" y="0" width="100" height="150" rx="10" ry="10" fill="white" stroke="red" strokeWidth="2" />
+                      { c === '☕' ? (
+                        /* Place the coffee icon centered on the card */
+                        <image href="/coffee-icon.svg" x="22" y="38" width="56" height="56" preserveAspectRatio="xMidYMid meet" />
+                      ) : (
+                        <>
+                          <text x="50" y="80" fontSize="36" textAnchor="middle" fill="black" fontFamily="Arial">{c}</text>
+                          <text x="10" y="20" fontSize="12" fill="black" fontFamily="Arial">{c}</text>
+                          <text x="80" y="135" fontSize="12" fill="black" fontFamily="Arial">{c}</text>
+                        </>
+                      ) }
+                    </svg>
                   </button>
                 );
               })}

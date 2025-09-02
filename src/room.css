@@ -190,6 +190,10 @@
 .participant-card .pause-icon {
   font-size: 24px;
   margin-bottom: 4px;
+  width: 36px; /* match previous emoji visual size */
+  height: 36px;
+  display: inline-block;
+  object-fit: contain;
 }
 .participant-card .pause-subtitle {
   font-size: 10px;
