@@ -1,11 +1,12 @@
 /* Poker-styled card buttons */
 .cardBtn.poker {
   position: relative;
-  --w: 90px;
-  --h: 140px;
+  /* slightly smaller default card size to avoid overflow */
+  --w: 104px;
+  --h: 156px;
   width: var(--w);
   height: var(--h);
-  padding: 6px;
+  padding: 8px;
   border-radius: 10px;
   background:
     linear-gradient(180deg, #fff 0%, #f7f7f7 100%);
@@ -17,14 +18,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 800;
   color: #111;
   cursor: pointer;
   transition: transform .18s ease, box-shadow .18s ease, border-color .12s ease;
   user-select: none;
   overflow: hidden;
-  margin: 8px; /* a little extra outer spacing */
+  margin: 6px; /* a little extra outer spacing */
 }
 
 /* variant for active/selected card */
@@ -93,21 +94,21 @@
 .grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 18px; /* increased from 12px */
+  gap: 1px; /* even tighter gap so cards fit comfortably */
   justify-content: center;
   align-items: center;
   margin: 0; /* ensure no extra collapse */
+  align-content: flex-start; /* keep items starting at top so overlap is predictable */
 }
 
 /* Make card buttons take a stable responsive width so they don't overlap */
 .cardBtn.poker {
-  flex: 0 0 76px;   /* preferred card width */
-  min-width: 64px;  /* minimum so content doesn't wrap weirdly */
-  margin: 8px; /* a little extra outer spacing */
+  flex: 0 0 calc(var(--w) * 0.9);   /* slightly reduce preferred width to fit more */
+  min-width: calc(var(--w) * 0.58);  /* keep a sensible minimum */
+  margin: 6px 6px 0 6px; /* reduce bottom margin so cards can slightly overlap vertically */
   box-sizing: border-box;
   transition: transform .18s ease, box-shadow .18s ease;
   z-index: 1;
-  padding: 1;
 }
 
 /* Bring hovered/active card above neighbors so it doesn't get visually clipped */
@@ -121,9 +122,16 @@
   .grid { gap: 10px; }
   /* Prevent wrapping on very small screens: make the grid horizontally scrollable */
   .grid { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 6px; }
-  .cardBtn.poker { --w:72px; --h:104px; margin:6px; flex: 0 0 auto; }
+  .cardBtn.poker { --w:84px; --h:124px; margin:6px; flex: 0 0 auto; }
   .cardBtn.poker .poker-top { font-size:16px; }
 }
+
+/* Slight stagger so cards overlap a bit instead of pushing the last card out of container */
+.grid .cardBtn.poker:nth-child(odd) { margin-top: -14px; }
+.grid .cardBtn.poker:nth-child(even) { margin-top: -10px; }
+
+/* Extra safety: prevent the grid from growing taller than its container and allow slight overlap via negative margins */
+.grid { max-height: calc(var(--h) * 2.8); }
 
 /* Remove container width limitation */
 .room-container {
@@ -135,9 +143,9 @@
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .cardBtn.poker {
-    --w: 80px;
-    --h: 120px;
-    font-size: 16px;
+  --w: 100px;
+  --h: 140px;
+  font-size: 16px;
   }
 
   .btn {
@@ -148,8 +156,8 @@
 
 @media (max-width: 480px) {
   .cardBtn.poker {
-    --w: 60px;
-    --h: 90px;
+  --w: 72px;
+  --h: 110px;
     font-size: 14px;
   }
 
@@ -164,7 +172,6 @@
   width: 100%;
   height: auto;
   display: block;
-  overflow: hidden; /* ensure any stray tspans are clipped inside the SVG */
 }
 
 /* Colored selection cards (title and subtitle on colored background) */

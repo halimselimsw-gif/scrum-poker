@@ -1721,19 +1721,19 @@ export default function Room({ roomId, name, onLeave }) {
                 };
 
                 const cardSubtitleMap = {
-                  '0': "— Zero effort — zero stress",
+                  '0': "Retry.exe",
                   '1': "Just one — easy peasy",
-                  '2': "— Try again… Ctrl+Z won’t help",
+                  '2': "Ctrl+Z failed",
                   '3': "Not two, not four",
-                  '5': " Go big — Wi-Fi sucks at home",
-                  '8': "Stop starting, just finish (like Netflix)",
-                  '13': " Unlucky? — Not today",
-                  '21': "21 — blackjack speed",
-                  '34': " Hard, not rocket science",
-                  '55': "— Think big — Picasso big",
-                  '89': "— Yes we can… later",
-                  '?': "Mystery card — surprise!",
-                  '♾': "∞ options, 1 deadline",
+                  '5': "— Hard, — not rocket science",
+                  '8': "Yes… after coffee",
+                  '13': "  Unlucky? — Not today",
+                  '21': "21 — blackjack",
+                  '34': "We can… lol",
+                  '55': "All in",
+                  '89': "Epic mode: ON",
+                  '?': "Chaos mode: ON",
+                  '♾': "♾ options, 1 deadline",
                   '☕': "Coffee break = best sprint"
                 };
 
@@ -1789,24 +1789,37 @@ export default function Room({ roomId, name, onLeave }) {
           <filter id="cardShadow" x="-20%" y="-20%" width="140%" height="140%">
             <feDropShadow dx="0" dy="6" stdDeviation="10" floodColor="#000" floodOpacity="0.12" />
           </filter>
-          <clipPath id={"cardClip" + i}>
-            <rect x="0" y="0" width="100" height="150" rx="10" ry="10" />
-          </clipPath>
         </defs>
-        <g clipPath={"url(#" + "cardClip" + i + ")"}>
         <rect x="0" y="0" width="100" height="150" rx="10" ry="10" fill={color} stroke="#fff" strokeWidth="3" filter="url(#cardShadow)" />
         { c === '☕' ? (
           <image href="/coffee-icon.svg" x="22" y="38" width="56" height="56" preserveAspectRatio="xMidYMid meet" />
         ) : (
             <>
             {/* subtle outline: draw black-ish behind slightly larger, then white on top */}
-            <text x="50" y={subtitleLines.length ? 52 : 60} fontSize="40" fontWeight="700" textAnchor="middle" fill="#111" opacity="0.35" fontFamily="Arial">{c}</text>
-            <text x="50" y={subtitleLines.length ? 52 : 60} fontSize="36" fontWeight="700" textAnchor="middle" fill="#fff" fontFamily="Arial">{c}</text>
+            <text x="50" y={subtitleLines.length ? 58 : 60} fontSize="40" fontWeight="700" textAnchor="middle" fill="#111" opacity="0.35" fontFamily="Arial">{c}</text>
+            <text x="50" y={subtitleLines.length ? 58 : 60} fontSize="36" fontWeight="700" textAnchor="middle" fill="#fff" fontFamily="Arial">{c}</text>
             { subtitleLines.length ? (
-              // Subtitle is italic, slightly larger, and uses increased line spacing to remain inside the card bounds
-              <text x="50" y="88" fontSize="12" fontStyle="italic" textAnchor="middle" fill="#fff" fontFamily="Arial">
+              // Subtitle is italic, larger, and uses a stroke on the text element so the outline
+              // aligns perfectly with each tspan line across monitors and DPI settings.
+              <text
+                x="50"
+                y="96"
+                fontSize="13"
+                fontStyle="italic"
+                textAnchor="middle"
+                fill="#fff"
+                fontFamily="Arial"
+                paintOrder="stroke fill"
+                stroke="#000"
+                strokeWidth={0.7}
+                strokeOpacity={0.2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                vectorEffect="non-scaling-stroke"
+              >
                 {subtitleLines.map((ln, idx) => (
-                  <tspan key={idx} x="50" dy={idx === 0 ? 0 : 13}>{ln}</tspan>
+                  // slightly increased line spacing (dy 16) to avoid stroke overlap between lines
+                  <tspan key={idx} x="50" dy={idx === 0 ? 0 : 16}>{ln}</tspan>
                 ))}
               </text>
             ) : null }
@@ -1815,7 +1828,6 @@ export default function Room({ roomId, name, onLeave }) {
             <text x="92" y="142" fontSize="12" fill="#fff" fontFamily="Arial" textAnchor="end">{c}</text>
           </>
         ) }
-        </g>
       </svg>
                   </button>
                 );
