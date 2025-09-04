@@ -1,11 +1,11 @@
 /* Poker-styled card buttons */
 .cardBtn.poker {
   position: relative;
-  --w: 85px;
-  --h: 130px;
+  --w: 90px;
+  --h: 140px;
   width: var(--w);
   height: var(--h);
-  padding: 8px;
+  padding: 6px;
   border-radius: 10px;
   background:
     linear-gradient(180deg, #fff 0%, #f7f7f7 100%);
@@ -165,6 +165,20 @@
   height: auto;
   display: block;
 }
+
+/* Colored selection cards (title and subtitle on colored background) */
+.cardBtn.poker .card-svg rect {
+  rx: 10;
+  ry: 10;
+}
+.cardBtn.poker .card-svg text { dominant-baseline: middle; }
+.cardBtn.poker .card-svg .subtitle { font-size: 9px; fill: #fff; opacity: 0.95 }
+
+/* Improve SVG text rendering for card numbers and subtitles */
+.cardBtn.poker .card-svg text { paint-order: stroke fill markers; -webkit-font-smoothing: antialiased; }
+.cardBtn.poker .card-svg tspan { font-family: Arial, sans-serif; }
+
+/* No forced reduction of SVG fonts on small screens to keep card numbers readable */
 
 /* Adjust icon size and centering */
 .icon {

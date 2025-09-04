@@ -1680,6 +1680,100 @@ export default function Room({ roomId, name, onLeave }) {
             <div className="grid">
               {CARDS.map((c, i) => {
                 const startRot = (i % 2 === 0) ? -8 : 8;
+                // small helper: color and subtitle per card
+                const cardColorFor = (val) => {
+                  // explicit mapping to match requested grouped palettes
+                  const yellow = '#F6C949'; // low
+                  const orange = '#E0893E'; // small
+                  const green = '#5FB76A';  // medium
+                  const blue = '#3B82F6';   // large
+                  const purple = '#8B5CF6'; // 34
+                  const teal = '#0FB5A6';   // 55
+                  const magenta = '#E11D74';// 89
+                  const gray = '#6B7280';   // ?
+                  const brown = '#6B4226';  // coffee
+                  const black = '#111827';  // infinity
+
+                  // special explicit values
+                  if (val === '34') return purple;
+                  if (val === '55') return purple;
+                  if (val === '89') return magenta;
+                  if (val === '?') return teal;
+                  if (val === '♾') return black;
+                  if (val === '☕') return gray;
+
+                  // grouped pairs / ranges
+                  if (val === '0' || val === '1') return yellow;
+                  if (val === '2' || val === '3') return orange;
+                  if (val === '5' || val === '8') return green;
+                  if (val === '13' || val === '21') return blue;
+
+                  // numeric fallback ranges
+                  const n = parseFloat(String(val).replace(',', '.'));
+                  if (!isNaN(n)) {
+                    if (n <= 1.5) return yellow;
+                    if (n <= 3) return orange;
+                    if (n <= 8) return green;
+                    if (n <= 21) return blue;
+                    return purple;
+                  }
+                  return blue;
+                };
+
+                const cardSubtitleMap = {
+                  '0': "Zero effort — zero stress",
+                  '1': "Just one — easy peasy",
+                  '2': "Try again… Ctrl+Z won’t help",
+                  '3': "Not two, not four",
+                  '5': "— Go big — Wi-Fi sucks at home",
+                  '8': "Stop starting, just finish (like Netflix)",
+                  '13': "— Unlucky? — Not today",
+                  '21': "— Steady… like rolling dice",
+                  '34': "Messy but doable (Excel style)",
+                  '55': "— Think big — Picasso big",
+                  '89': "Yes we can… later",
+                  '?': "Mystery card — surprise!",
+                  '♾': "∞ options, 1 deadline",
+                  '☕': "Coffee break = best sprint"
+                };
+
+                const color = cardColorFor(c);
+                const subtitle = cardSubtitleMap[c] || '';
+
+                // wrap subtitle into short lines for SVG tspans (allow up to 3 lines)
+                const wrapSubtitle = (text, maxChars = 20) => {
+                  if (!text) return [];
+                  const words = text.split(/\s+/);
+                  const lines = [];
+                  let cur = '';
+                  for (const w of words) {
+                    // if a single word is longer than maxChars, break it into chunks
+                    if (w.length > maxChars) {
+                      let idx = 0;
+                      while (idx < w.length) {
+                        const chunk = w.slice(idx, idx + maxChars);
+                        if (cur) { lines.push(cur); cur = ''; }
+                        lines.push(chunk);
+                        idx += maxChars;
+                        if (lines.length >= 3) break;
+                      }
+                      if (lines.length >= 3) break;
+                      continue;
+                    }
+                    if ((cur + ' ' + w).trim().length <= maxChars) {
+                      cur = (cur + ' ' + w).trim();
+                    } else {
+                      if (cur) lines.push(cur);
+                      cur = w;
+                    }
+                  }
+                  if (cur) lines.push(cur);
+                  // ensure at most 3 lines; keep full text where possible
+                  return lines.slice(0, 3);
+                };
+
+                const subtitleLines = wrapSubtitle(subtitle, 20);
+
                 return (
                   <button
                     key={c}
@@ -1690,18 +1784,32 @@ export default function Room({ roomId, name, onLeave }) {
                     style={dealt ? { animationDelay: `${i * 70}ms`, ['--start-rot']: `${startRot}deg` } : undefined}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 150" className="card-svg">
-                      <rect x="0" y="0" width="100" height="150" rx="10" ry="10" fill="white" stroke="red" strokeWidth="2" />
-                      { c === '☕' ? (
-                        /* Place the coffee icon centered on the card */
-                        <image href="/coffee-icon.svg" x="22" y="38" width="56" height="56" preserveAspectRatio="xMidYMid meet" />
-                      ) : (
-                        <>
-                          <text x="50" y="80" fontSize="36" textAnchor="middle" fill="black" fontFamily="Arial">{c}</text>
-                          <text x="10" y="20" fontSize="12" fill="black" fontFamily="Arial">{c}</text>
-                          <text x="80" y="135" fontSize="12" fill="black" fontFamily="Arial">{c}</text>
-                        </>
-                      ) }
-                    </svg>
+        <defs>
+          <filter id="cardShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="6" stdDeviation="10" floodColor="#000" floodOpacity="0.12" />
+          </filter>
+        </defs>
+        <rect x="0" y="0" width="100" height="150" rx="10" ry="10" fill={color} stroke="#fff" strokeWidth="3" filter="url(#cardShadow)" />
+        { c === '☕' ? (
+          <image href="/coffee-icon.svg" x="22" y="38" width="56" height="56" preserveAspectRatio="xMidYMid meet" />
+        ) : (
+          <>
+            {/* subtle outline: draw black-ish behind slightly larger, then white on top */}
+            <text x="50" y={subtitleLines.length ? 58 : 60} fontSize="44" fontWeight="700" textAnchor="middle" fill="#111" opacity="0.35" fontFamily="Arial">{c}</text>
+            <text x="50" y={subtitleLines.length ? 58 : 60} fontSize="40" fontWeight="700" textAnchor="middle" fill="#fff" fontFamily="Arial">{c}</text>
+            { subtitleLines.length ? (
+              <text x="50" y="88" fontSize="9.8" textAnchor="middle" fill="#fff" fontFamily="Arial">
+                {subtitleLines.map((ln, idx) => (
+                  <tspan key={idx} x="50" dy={idx === 0 ? 0 : 11}>{ln}</tspan>
+                ))}
+              </text>
+            ) : null }
+            {/* small corners */}
+            <text x="10" y="18" fontSize="12" fill="#fff" fontFamily="Arial">{c}</text>
+            <text x="92" y="142" fontSize="12" fill="#fff" fontFamily="Arial" textAnchor="end">{c}</text>
+          </>
+        ) }
+      </svg>
                   </button>
                 );
               })}

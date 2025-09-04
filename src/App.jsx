@@ -5,7 +5,7 @@ import { db, ensureAuth } from './firebase'
 
 const DEFAULT_NAMES = ['Frodo','Samwise','Gandalf','Aragorn','Legolas','Gimli','Boromir','Merry','Pippin','Elrond','Galadriel', 'Sabri','Bilbo']
 
-const randomRoom = () => Math.random().toString(36).slice(2, 8).toUpperCase()
+const randomRoom = () => Math.random().toString(36).slice(2, 18).toUpperCase()
 
 
 export default function App(){
