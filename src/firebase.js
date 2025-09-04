@@ -1,29 +1,28 @@
-// src/firebase.js
-import { initializeApp } from "firebase/app";
-import { getDatabase } from "firebase/database";
-import { getAuth, signInAnonymously } from "firebase/auth";
+import { initializeApp } from 'firebase/app'
+import { getDatabase } from 'firebase/database'
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth'
 
-// Firebase config .env'den geliyor
+
+// 🔁 Burayı kendi Firebase web uygulaması config’inizle doldurun
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-};
-
-
-// Firebase başlat
-const app = initializeApp(firebaseConfig);
-export const db = getDatabase(app);
-export const auth = getAuth(app);
-
-// Anonim login (Scrum Poker için yeterli)
-export async function ensureAuth() {
-  if (!auth.currentUser) {
-    await signInAnonymously(auth);
-  }
-  return auth.currentUser;
+apiKey: "AIzaSyBLp4z5V1ymv8PGSFeUyukhEKSRwciGAvM",
+authDomain: "test-faa43.firebaseapp.com",
+databaseURL: "https://test-faa43-default-rtdb.firebaseio.com",
+projectId: "test-faa43",
+storageBucket: "test-faa43.firebasestorage.app",
+messagingSenderId: "604707384066",
+appId: "1:604707384066:web:bc65a59c6fb6afa21ef01b"
 }
+
+
+const app = initializeApp(firebaseConfig)
+export const db = getDatabase(app)
+export const auth = getAuth(app)
+
+
+export const ensureAuth = () => new Promise((resolve, reject) => {
+onAuthStateChanged(auth, (user) => {
+if (user) return resolve(user)
+signInAnonymously(auth).then(() => resolve(auth.currentUser)).catch(reject)
+})
+})

@@ -1676,7 +1676,7 @@ export default function Room({ roomId, name, onLeave }) {
           <div style={{height:5}}/>
           <div>
             <div className="small" style={{marginBottom:8}}>Choose your card</div>
-            <div style={{height:8}}/>
+            <div style={{height:28}}/>
             <div className="grid">
               {CARDS.map((c, i) => {
                 const startRot = (i % 2 === 0) ? -8 : 8;
@@ -1721,20 +1721,20 @@ export default function Room({ roomId, name, onLeave }) {
                 };
 
                 const cardSubtitleMap = {
-                  '0': "Retry.exe",
+                  '0': "…  404 …  — (Success) not found",
                   '1': "Just one — easy peasy",
-                  '2': "Ctrl+Z failed",
+                  '2': "(Ctrl C + Ctrl V) … failed  —  try (Ctrl Z)",
                   '3': "Not two, not four",
-                  '5': "— Hard, — not rocket science",
-                  '8': "Yes… after coffee",
+                  '5': "— Yes… — after coffee",
+                  '8': "— Hard, — not rocket science",                  
                   '13': "  Unlucky? — Not today",
                   '21': "21 — blackjack",
                   '34': "We can… lol",
                   '55': "All in",
                   '89': "Epic mode: ON",
-                  '?': "Chaos mode: ON",
-                  '♾': "♾ options, 1 deadline",
-                  '☕': "Coffee break = best sprint"
+                  '?': "— Chaos… — surprise!",
+                  '♾': "No escape",
+                  '☕': "Ctrl+Alt+Coffee"
                 };
 
                 const color = cardColorFor(c);
@@ -1792,12 +1792,36 @@ export default function Room({ roomId, name, onLeave }) {
         </defs>
         <rect x="0" y="0" width="100" height="150" rx="10" ry="10" fill={color} stroke="#fff" strokeWidth="3" filter="url(#cardShadow)" />
         { c === '☕' ? (
-          <image href="/coffee-icon.svg" x="22" y="38" width="56" height="56" preserveAspectRatio="xMidYMid meet" />
+          <>
+            <image href="/coffee-icon.svg" x="22" y="30" width="56" height="56" preserveAspectRatio="xMidYMid meet" />
+            { subtitleLines.length ? (
+              <text
+                x="50"
+                y="110"
+                fontSize="13"
+                fontStyle="italic"
+                textAnchor="middle"
+                fill="#fff"
+                fontFamily="Arial"
+                paintOrder="stroke fill"
+                stroke="#000"
+                strokeWidth={0.7}
+                strokeOpacity={0.2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                vectorEffect="non-scaling-stroke"
+              >
+                {subtitleLines.map((ln, idx) => (
+                  <tspan key={idx} x="50" dy={idx === 0 ? 0 : 16}>{ln}</tspan>
+                ))}
+              </text>
+            ) : null }
+          </>
         ) : (
             <>
             {/* subtle outline: draw black-ish behind slightly larger, then white on top */}
-            <text x="50" y={subtitleLines.length ? 58 : 60} fontSize="40" fontWeight="700" textAnchor="middle" fill="#111" opacity="0.35" fontFamily="Arial">{c}</text>
-            <text x="50" y={subtitleLines.length ? 58 : 60} fontSize="36" fontWeight="700" textAnchor="middle" fill="#fff" fontFamily="Arial">{c}</text>
+            <text x="50" y={subtitleLines.length ? 64 : 60} fontSize="40" fontWeight="700" textAnchor="middle" fill="#111" opacity="0.35" fontFamily="Arial">{c}</text>
+            <text x="50" y={subtitleLines.length ? 64 : 60} fontSize="36" fontWeight="700" textAnchor="middle" fill="#fff" fontFamily="Arial">{c}</text>
             { subtitleLines.length ? (
               // Subtitle is italic, larger, and uses a stroke on the text element so the outline
               // aligns perfectly with each tspan line across monitors and DPI settings.
