@@ -164,6 +164,7 @@
   width: 100%;
   height: auto;
   display: block;
+  overflow: hidden; /* ensure any stray tspans are clipped inside the SVG */
 }
 
 /* Colored selection cards (title and subtitle on colored background) */
@@ -177,6 +178,25 @@
 /* Improve SVG text rendering for card numbers and subtitles */
 .cardBtn.poker .card-svg text { paint-order: stroke fill markers; -webkit-font-smoothing: antialiased; }
 .cardBtn.poker .card-svg tspan { font-family: Arial, sans-serif; }
+
+/* Subtitle tweaks: larger, italic, centered, clipped inside the SVG rect */
+.cardBtn.poker .card-svg text[fontstyle],
+.cardBtn.poker .card-svg text[fontStyle],
+.cardBtn.poker .card-svg text[font-style] { /* fallback selector support */
+  vector-effect: non-scaling-stroke;
+}
+.cardBtn.poker .card-svg text[fontStyle="italic"],
+.cardBtn.poker .card-svg text[fontstyle="italic"],
+.cardBtn.poker .card-svg text[font-style="italic"] {
+  font-style: italic;
+}
+
+/* Ensure tspans use consistent font size and don't push outside the rect; use explicit line-height via dy increments in JSX */
+.cardBtn.poker .card-svg tspan { font-size: 12px; line-height: 1.1; }
+
+/* Clip any accidental overflow from SVG text (extra safety) */
+.cardBtn.poker .card-svg { overflow: visible; }
+.cardBtn.poker { overflow: hidden; }
 
 /* No forced reduction of SVG fonts on small screens to keep card numbers readable */
 
