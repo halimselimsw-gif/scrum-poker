@@ -149,6 +149,33 @@ export default function Room({ roomId, name, onLeave }) {
       });
   }, [])
 
+  // If the user is offline (local navigator offline or remote disconnected flag),
+  // clicking anywhere in the room should mark them active again.
+  useEffect(() => {
+    if (!user) return;
+
+    const onAnyClick = async () => {
+      try {
+        const p = room?.participants?.[user.uid];
+        const remoteOffline = !!(p && (p.disconnectedAt === true || p.revealOffline === true));
+        if (isOffline || remoteOffline) {
+          // local quick UX update
+          try { setIsOffline(false); } catch(e){}
+          try { setToastMessage('Marking you online...'); } catch(e){}
+          // best-effort mark active in DB
+          try { await markActiveNow(); } catch(e) { console.warn('markActiveNow failed on click', e); }
+          // small delay to clear toast
+          setTimeout(() => { try { setToastMessage(null); } catch(e){} }, 1200);
+        }
+      } catch (e) {
+        console.warn('onAnyClick handler failed', e);
+      }
+    };
+
+    window.addEventListener('click', onAnyClick);
+    return () => window.removeEventListener('click', onAnyClick);
+  }, [user, isOffline, room]);
+
   // Network online/offline detection to avoid attempting DB writes while disconnected
   useEffect(() => {
     const onOffline = () => {
@@ -1532,7 +1559,8 @@ export default function Room({ roomId, name, onLeave }) {
                 // If lastSeen exists and is recent => online even if disconnectedAt was set earlier.
                 // If lastSeen missing but disconnectedAt exists => consider offline.
                 // If both are missing, consider online (new participant).
-                const OFFLINE_MS = HEARTBEAT_MS * OFFLINE_MULTIPLIER; // threshold based on heartbeat
+                // threshold based on heartbeat, but enforce a minimum of 10 minutes
+                const OFFLINE_MS = Math.max(HEARTBEAT_MS * OFFLINE_MULTIPLIER, 2 * 60 * 5000); // at least 120000ms
                 const now = Date.now();
                 const lastSeen = p.lastSeen || null;
                 // accept either the new boolean flag or the old timestamp field
