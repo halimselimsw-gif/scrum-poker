@@ -1751,7 +1751,7 @@ export default function Room({ roomId, name, onLeave }) {
                 const cardSubtitleMap = {
                   '0': "…  404 …  — (Success) not found",
                   '1': "Just one — easy peasy",
-                  '2': "(Ctrl C + Ctrl V) … failed  —  try (Ctrl Z)",
+                  '2': "… failed  —  try (Ctrl Z)",
                   '3': "Not two, not four",
                   '5': "— Yes… — after coffee",
                   '8': "— Hard, — not rocket science",                  
