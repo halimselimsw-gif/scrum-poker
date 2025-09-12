@@ -73,7 +73,7 @@
 
 /* disabled look */
 .cardBtn.poker:disabled {
-  opacity: 0.6;
+  opacity: 0.8;
   cursor: default;
 }
 
@@ -383,11 +383,16 @@
 
 /* back design (playing-card-like) */
 .card-back {
-  background:
-    radial-gradient(circle at 20% 20%, rgba(255,255,255,0.06), transparent 8%),
-    repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0 6px, rgba(0,0,0,0.02) 6px 12px),
-    linear-gradient(180deg,#b5162e,#8f1020);
-  border: 2px solid rgba(0,0,0,0.14);
+  /* Use the SVG wrapper first and ensure the whole artwork is visible without cropping */
+  background-image: url('/card-back.svg'), url('/card-back.png'), linear-gradient(180deg,#b5162e,#8f1020);
+  background-position: center center;
+  background-repeat: no-repeat;
+  /* contain ensures the full artwork (including white border) is visible exactly */
+  background-size: contain;
+  background-color: transparent;
+  /* remove additional CSS borders/shadows so the image's own border is visible exactly */
+  border: none;
+  box-shadow: none;
   color: white;
   transform: rotateY(0deg);
 }
@@ -500,12 +505,8 @@
 
 /* subtle rounded inner pattern to mimic card back detail */
 .card-back::after {
-  content: '';
-  position:absolute;
-  inset:12%;
-  border-radius:6px;
-  background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.03), transparent 30%);
-  opacity: 0.9;
+  /* disable extra overlay so the card image isn't altered */
+  display: none;
 }
 
 /* ensure responsive size */
@@ -1327,3 +1328,70 @@
   transform: translateY(-2px);
   outline: none;
 }
+
+/* --- Stacked deck layout for selection cards (aligned, overlapping) --- */
+.grid.stacked {
+  display: flex;
+  /* left-align the stacked deck so cards start from the left */
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0; /* overlapping handled by negative margins */
+  padding: 8px 0 18px 0;
+  /* keep height stable so container doesn't jump */
+  height: var(--h);
+  overflow: visible;
+  padding-left: 12px; /* small inset from the container left edge */
+}
+
+.grid.stacked .cardBtn.poker {
+  /* place cards on the same baseline and overlap using negative margin-left */
+  margin: 0 0 0 -30px; /* negative left margin to stack horizontally; tuned to card width */
+  transition: transform .18s ease, box-shadow .18s ease, margin .18s ease;
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(2,6,23,0.12);
+  z-index: 1;
+}
+
+/* first card should be fully visible (no negative overlap to the left) */
+.grid.stacked .cardBtn.poker:first-child { margin-left: 12px; }
+
+/* progressively lift/offset cards slightly to create the stacked look on larger viewports */
+@media (min-width: 720px) {
+  .grid.stacked .cardBtn.poker:nth-child(n) { transform: translateY(0) rotate(0deg); }
+  .grid.stacked .cardBtn.poker:nth-child(1) { margin-left: 0; }
+  .grid.stacked .cardBtn.poker:nth-child(2) { margin-left: -58px; }
+  .grid.stacked .cardBtn.poker:nth-child(3) { margin-left: -56px; }
+  .grid.stacked .cardBtn.poker:nth-child(4) { margin-left: -54px; }
+  .grid.stacked .cardBtn.poker:nth-child(5) { margin-left: -52px; }
+  .grid.stacked .cardBtn.poker:nth-child(6) { margin-left: -50px; }
+}
+
+/* Hover / active card behavior: raise above neighbors and create visible gap */
+.grid.stacked .cardBtn.poker:hover,
+.grid.stacked .cardBtn.poker.active {
+  /* lift and slightly pull the active card right so it separates from neighbors */
+  transform: translateY(-18px) translateX(10px) scale(1.06);
+  z-index: 30 !important;
+  box-shadow: 0 26px 48px rgba(2,6,23,0.22);
+}
+
+/* Reduce negative overlap for the immediate neighbor when a card is active so a gap appears */
+.grid.stacked .cardBtn.poker.active + .cardBtn.poker {
+  margin-left: -6px !important; /* much smaller overlap to show a gap */
+  transition: margin .18s ease;
+}
+
+/* When a card later in the stack is active, ensure the focused one still separates from following cards */
+.grid.stacked .cardBtn.poker.active ~ .cardBtn.poker { transform: translateX(0); }
+
+/* Mobile: reduce overlap so touch targets are accessible and horizontally scroll if needed */
+@media (max-width: 520px) {
+  .grid.stacked { height: calc(var(--h) * 1.05); }
+  .grid.stacked .cardBtn.poker { margin-left: -36px; min-width: calc(var(--w) * 0.7); }
+  .grid.stacked .cardBtn.poker:first-child { margin-left: 6px; }
+  .grid.stacked { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+
+/* accessibility: ensure keyboard focus visibly brings card forward */
+.grid.stacked .cardBtn.poker:focus { outline: 3px solid rgba(59,130,246,0.18); z-index: 40 }
+

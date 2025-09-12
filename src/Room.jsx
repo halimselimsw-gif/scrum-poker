@@ -1705,7 +1705,7 @@ export default function Room({ roomId, name, onLeave }) {
           <div>
             <div className="small" style={{marginBottom:8}}>Choose your card</div>
             <div style={{height:28}}/>
-            <div className="grid">
+            <div className="grid stacked">
               {CARDS.map((c, i) => {
                 const startRot = (i % 2 === 0) ? -8 : 8;
                 // small helper: color and subtitle per card
@@ -1876,8 +1876,8 @@ export default function Room({ roomId, name, onLeave }) {
               </text>
             ) : null }
             {/* small corners */}
-            <text x="10" y="18" fontSize="12" fill="#fff" fontFamily="Arial">{c}</text>
-            <text x="92" y="142" fontSize="12" fill="#fff" fontFamily="Arial" textAnchor="end">{c}</text>
+            <text x="10" y="18" fontSize="15" fill="#fff" fontFamily="Arial">{c}</text>
+            <text x="92" y="142" fontSize="15" fill="#fff" fontFamily="Arial" textAnchor="end">{c}</text>
           </>
         ) }
       </svg>
