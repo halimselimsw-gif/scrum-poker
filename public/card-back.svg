@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Refined card-back vector: denser lattice, more petals in rosette, dotted inner lace and decorative corners -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 600" width="420" height="600" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <!-- small diamond tile: a rotated square to create lattice diamonds -->
+    <pattern id="diamondTile" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect x="0" y="0" width="20" height="20" fill="#e9252a" />
+      <path d="M0 10 L20 10" stroke="#ffffff" stroke-width="2" />
+      <path d="M10 0 L10 20" stroke="#ffffff" stroke-width="2" />
+    </pattern>
+
+    <!-- tiny dot pattern for inner lace -->
+    <pattern id="tinyDots" width="6" height="6" patternUnits="userSpaceOnUse">
+      <circle cx="3" cy="3" r="0.8" fill="#ffffff" />
+    </pattern>
+
+    <!-- single petal used to build the central rosette (rotated many times) -->
+    <g id="petalShape">
+      <path d="M0,-58 C6,-40 22,-40 28,-28 C14,-34 8,-20 0,-10 C-8,-20 -14,-34 -28,-28 C-22,-40 -6,-40 0,-58 Z" fill="#ffffff" />
+    </g>
+  </defs>
+
+  <!-- card outer background + white core -->
+  <rect x="0" y="0" width="420" height="600" rx="24" ry="24" fill="#f6f6f6" />
+  <rect x="12" y="12" width="396" height="576" rx="18" ry="18" fill="#ffffff" />
+
+  <!-- red decorated panel -->
+  <rect x="28" y="28" width="364" height="544" rx="14" ry="14" fill="#e9252a" stroke="#d41b23" stroke-width="6" />
+
+  <!-- outer inner white border (rounded) -->
+  <rect x="36" y="36" width="348" height="528" rx="12" ry="12" fill="none" stroke="#ffffff" stroke-width="6" />
+
+  <!-- dotted lace border inside -->
+  <rect x="48" y="48" width="324" height="500" rx="10" ry="10" fill="none" stroke="url(#tinyDots)" stroke-width="3" opacity="0.95" />
+
+  <!-- dense lattice fill using pattern to get many small diamonds -->
+  <g transform="translate(36,36)">
+    <rect x="8" y="8" width="332" height="512" rx="8" ry="8" fill="url(#diamondTile)" />
+    <!-- overlay crisp white thin criss-cross to strengthen the diamond outlines -->
+    <g stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity="0.98">
+      <!-- a series of parallel diagonal lines in both directions to form crisp diamonds -->
+      <!-- down-right lines -->
+      <path d="M-120 0 L460 520" />
+      <path d="M-100 0 L440 520" />
+      <path d="M-80 0 L420 520" />
+      <path d="M-60 0 L400 520" />
+      <path d="M-40 0 L380 520" />
+      <path d="M-20 0 L360 520" />
+      <path d="M0 0 L340 520" />
+      <path d="M20 0 L320 520" />
+      <path d="M40 0 L300 520" />
+      <path d="M60 0 L280 520" />
+      <path d="M80 0 L260 520" />
+      <!-- down-left lines -->
+      <path d="M460 -40 L0 520" />
+      <path d="M480 -40 L20 520" />
+      <path d="M500 -40 L40 520" />
+      <path d="M520 -40 L60 520" />
+      <path d="M540 -40 L80 520" />
+      <path d="M560 -40 L100 520" />
+    </g>
+  </g>
+
+  <!-- central rosette: layered, many-petal mandala -->
+  <g transform="translate(210,300)">
+    <circle r="92" fill="#ffffff" />
+    <circle r="84" fill="#e9252a" />
+
+    <!-- petals: replicate the petal shape 20 times for dense rosette -->
+    <g>
+      <g transform="scale(0.9)">
+        <use href="#petalShape" transform="rotate(0)" />
+        <use href="#petalShape" transform="rotate(18)" />
+        <use href="#petalShape" transform="rotate(36)" />
+        <use href="#petalShape" transform="rotate(54)" />
+        <use href="#petalShape" transform="rotate(72)" />
+        <use href="#petalShape" transform="rotate(90)" />
+        <use href="#petalShape" transform="rotate(108)" />
+        <use href="#petalShape" transform="rotate(126)" />
+        <use href="#petalShape" transform="rotate(144)" />
+        <use href="#petalShape" transform="rotate(162)" />
+        <use href="#petalShape" transform="rotate(180)" />
+        <use href="#petalShape" transform="rotate(198)" />
+        <use href="#petalShape" transform="rotate(216)" />
+        <use href="#petalShape" transform="rotate(234)" />
+        <use href="#petalShape" transform="rotate(252)" />
+        <use href="#petalShape" transform="rotate(270)" />
+        <use href="#petalShape" transform="rotate(288)" />
+        <use href="#petalShape" transform="rotate(306)" />
+        <use href="#petalShape" transform="rotate(324)" />
+        <use href="#petalShape" transform="rotate(342)" />
+      </g>
+    </g>
+
+    <!-- inner rings to match the sample -->
+    <circle r="48" fill="#ffffff" />
+    <circle r="42" fill="#e9252a" />
+    <circle r="16" fill="#ffffff" />
+  </g>
+
+  <!-- corner medallions: circular with radiating spokes -->
+  <g fill="#ffffff" opacity="0.98">
+    <g transform="translate(72,88)">
+      <circle r="18" fill="#ffffff" />
+      <circle r="13" fill="#e9252a" />
+      <g stroke="#ffffff" stroke-width="2" transform="scale(0.7)">
+        <path d="M0,-16 L3,-6 L12,-4 L4,2 L6,12 L0,6 L-6,12 L-4,2 L-12,-4 L-3,-6 Z" fill="#ffffff" />
+      </g>
+    </g>
+    <g transform="translate(348,88)">
+      <circle r="18" fill="#ffffff" />
+      <circle r="13" fill="#e9252a" />
+      <g stroke="#ffffff" stroke-width="2" transform="scale(0.7)">
+        <path d="M0,-16 L3,-6 L12,-4 L4,2 L6,12 L0,6 L-6,12 L-4,2 L-12,-4 L-3,-6 Z" fill="#ffffff" />
+      </g>
+    </g>
+    <g transform="translate(72,512)">
+      <circle r="18" fill="#ffffff" />
+      <circle r="13" fill="#e9252a" />
+      <g stroke="#ffffff" stroke-width="2" transform="scale(0.7)">
+        <path d="M0,-16 L3,-6 L12,-4 L4,2 L6,12 L0,6 L-6,12 L-4,2 L-12,-4 L-3,-6 Z" fill="#ffffff" />
+      </g>
+    </g>
+    <g transform="translate(348,512)">
+      <circle r="18" fill="#ffffff" />
+      <circle r="13" fill="#e9252a" />
+      <g stroke="#ffffff" stroke-width="2" transform="scale(0.7)">
+        <path d="M0,-16 L3,-6 L12,-4 L4,2 L6,12 L0,6 L-6,12 L-4,2 L-12,-4 L-3,-6 Z" fill="#ffffff" />
+      </g>
+    </g>
+  </g>
+
+  <!-- thin decorative inner frame (white) -->
+  <rect x="44" y="44" width="332" height="512" rx="10" ry="10" fill="none" stroke="#ffffff" stroke-width="4" />
+
+</svg>

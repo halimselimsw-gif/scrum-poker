@@ -73,8 +73,8 @@
 
 /* disabled look */
 .cardBtn.poker:disabled {
-  opacity: 0.8;
-  cursor: default;
+  opacity: 0.9;
+  cursor: no-drop;
 }
 
 /* internal layout (makes the label centered and large) */
@@ -360,8 +360,8 @@
 
 /* 3D container for the card */
 .card-visual {
-  width:90px;
-  height:116px;
+  width:88px;
+  height:122px;
   perspective: 1200px;
   position: relative;
   flex: 0 0 auto;
