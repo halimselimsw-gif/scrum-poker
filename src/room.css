@@ -1232,6 +1232,8 @@
   box-shadow: 0 4px 6px rgba(253, 253, 253, 0.2);
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
+  position: relative; /* needed for pseudo-element corners */
+  overflow: visible; /* allow glow to escape */
 }
 
 .reveal-btn:hover {
@@ -1242,6 +1244,126 @@
   outline: none;
   background-color: #2a2a3f !important;
 }
+
+/* Electric corner accents using 4 small pseudo-elements. They animate on hover. */
+.reveal-btn::before,
+.reveal-btn::after,
+.reveal-btn .corner-left,
+.reveal-btn .corner-right {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: screen;
+  background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.9), transparent 20%),
+              linear-gradient(135deg, #5eead4 0%, #60a5fa 50%, #f472b6 100%);
+  filter: blur(6px) contrast(120%);
+  transform: scale(0.6) rotate(12deg);
+  transition: opacity .28s ease, transform .36s cubic-bezier(.2,.9,.2,1);
+}
+
+.reveal-btn::before { top: -8px; left: -8px; border-radius: 6px; }
+.reveal-btn::after  { bottom: -8px; right: -8px; border-radius: 6px; }
+.reveal-btn .corner-left { bottom: -8px; left: -8px; border-radius: 6px; }
+.reveal-btn .corner-right{ top: -8px; right: -8px; border-radius: 6px; }
+
+.reveal-btn:hover::before,
+.reveal-btn:hover::after,
+.reveal-btn:hover .corner-left,
+.reveal-btn:hover .corner-right {
+  
+  transform: scale(1) rotate(0deg);
+}
+
+/* Add a thin animated electric outline that traces the circle on hover */
+.reveal-btn .electric-outline {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  background: conic-gradient(from 0deg, rgba(96,165,250,0.0), rgba(96,165,250,0.0));
+  mix-blend-mode: screen;
+  filter: blur(6px);
+  transition: opacity .28s ease;
+}
+
+.reveal-btn:hover .electric-outline { opacity: 1; background: conic-gradient(from 0deg, #60a5fa, #5eead4, #f472b6, #60a5fa); animation: spin-electric 1.6s linear infinite; }
+
+@keyframes spin-electric { to { transform: rotate(360deg); } }
+
+/* Fallback: if inner .icon is an <img>, add a subtle brightening on hover */
+.reveal-btn:hover .icon { filter: drop-shadow(0 6px 12px rgba(96,165,250,0.28)); transform: translateY(-2px); transition: transform .18s ease, filter .22s ease; }
+
+.reset-btn {
+  /* match reveal button base appearance so the markup is visible */
+  background-color: #a9a5a5;
+  border: none;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 6px rgba(253, 253, 253, 0.2);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  position: relative;
+  overflow: visible;
+}
+.reset-btn:hover {
+  transform: scale(1.1); /* Hover efekti (same as reveal) */
+  box-shadow: 0 20px 44px rgba(0,0,0,0.32), 0 6px 18px rgba(0,0,0,0.12) inset,
+              0 0 0 4px rgba(34,211,238,0.06);
+  transform: translateY(-4px);
+  outline: none;
+  background-color: #2a2a3f !important;
+}
+.reset-btn::before,
+.reset-btn::after,
+.reset-btn .corner-left,
+.reset-btn .corner-right {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: screen;
+  background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.9), transparent 20%),
+              linear-gradient(135deg, #5eead4 0%, #60a5fa 50%, #f472b6 100%);
+  filter: blur(6px) contrast(120%);
+  transform: scale(0.6) rotate(12deg);
+  transition: opacity .28s ease, transform .36s cubic-bezier(.2,.9,.2,1);
+}
+.reset-btn::before { top: -8px; left: -8px; border-radius: 6px; }
+.reset-btn::after  { bottom: -8px; right: -8px; border-radius: 6px; }
+.reset-btn .corner-left { bottom: -8px; left: -8px; border-radius: 6px; }
+.reset-btn .corner-right{ top: -8px; right: -8px; border-radius: 6px; }
+.reset-btn:hover::before,
+.reset-btn:hover::after,
+.reset-btn:hover .corner-left,
+.reset-btn:hover .corner-right {
+  
+  transform: scale(1) rotate(0deg);
+}
+.reset-btn .electric-outline {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  background: conic-gradient(from 0deg, rgba(96,165,250,0.0), rgba(96,165,250,0.0));
+  mix-blend-mode: screen;
+  filter: blur(6px);
+  transition: opacity .28s ease;
+}
+.reset-btn:hover .electric-outline { opacity: 1; background: conic-gradient(from 0deg, #60a5fa, #5eead4, #f472b6, #60a5fa); animation: spin-electric 1.6s linear infinite; }
+.reset-btn:hover .icon { filter: drop-shadow(0 6px 12px rgba(96,165,250,0.28)); transform: translateY(-2px); transition: transform .18s ease, filter .22s ease; }
+
+.reset-btn .icon { width: 35px; height: 40px; }
 
 .reveal-btn .icon {
   width: 35px;
@@ -1255,6 +1377,8 @@
     background-color: var(--bs-btn-disabled-bg);
     border-color: #121313;
 }
+
+[data-theme="light"] .reset-btn { color: var(--bs-btn-disabled-color); background-color: var(--bs-btn-disabled-bg); border-color: #121313; }
 
 /* Ensure icon remains visible on the darker bg by removing any light-tinted shadow filters */
 .reveal-btn .icon {

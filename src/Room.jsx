@@ -1665,7 +1665,10 @@ export default function Room({ roomId, name, onLeave }) {
             <div className="button-group">
               {isModerator && room.state === 'voting' && (
                 <div className="button-container">
-                  <button className="btn-circle" onClick={handleReveal} disabled={isOffline || !!room?.markedForDeletionAt}>
+                  <button className="reveal-btn btn-circle" onClick={handleReveal} disabled={isOffline || !!room?.markedForDeletionAt} aria-label="Reveal">
+                    <span className="electric-outline" />
+                    <span className="corner-left" />
+                    <span className="corner-right" />
                     <img src="/reveal-icon.svg" alt="Reveal" className="icon" />
                   </button>
                   <div className="button-label">Reveal</div>
@@ -1673,7 +1676,10 @@ export default function Room({ roomId, name, onLeave }) {
               )}
               {isModerator && room.state === 'revealed' && (
                 <div className="button-container">
-                  <button className="btn-circle" onClick={reset} disabled={isOffline || !!room?.markedForDeletionAt}>
+                  <button className="reset-btn btn-circle" onClick={reset} disabled={isOffline || !!room?.markedForDeletionAt} aria-label="Reset">
+                    <span className="electric-outline" />
+                    <span className="corner-left" />
+                    <span className="corner-right" />
                     <img src="/reset-icon.svg" alt="Reset" className="icon" />
                   </button>
                   <div className="button-label">Restart</div>
