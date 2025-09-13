@@ -2,8 +2,8 @@
 .cardBtn.poker {
   position: relative;
   /* slightly smaller default card size to avoid overflow */
-  --w: 104px;
-  --h: 156px;
+  --w: 105px;
+  --h: 135px;
   width: var(--w);
   height: var(--h);
   padding: 8px;
@@ -99,6 +99,8 @@
   align-items: center;
   margin: 0; /* ensure no extra collapse */
   align-content: flex-start; /* keep items starting at top so overlap is predictable */
+  /* keep a small left inset to counter negative margins used by stacked layouts */
+  padding-left: 12px;
 }
 
 /* Make card buttons take a stable responsive width so they don't overlap */
@@ -120,8 +122,8 @@
 /* Smaller screens: reduce card size and gaps to avoid wrapping collisions */
 @media (max-width: 520px) {
   .grid { gap: 10px; }
-  /* Prevent wrapping on very small screens: make the grid horizontally scrollable */
-  .grid { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 6px; }
+  /* Allow grids to wrap on small screens so stacked decks don't force horizontal scroll */
+  .grid { flex-wrap: wrap; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
   .cardBtn.poker { --w:84px; --h:124px; margin:6px; flex: 0 0 auto; }
   .cardBtn.poker .poker-top { font-size:16px; }
 }
@@ -138,6 +140,8 @@
   width: 100%;
   margin: 0;
   padding: 0;
+  /* allow children (lifted/translated cards) to overflow their container visually */
+  overflow: visible;
 }
 
 /* Responsive adjustments */
@@ -361,7 +365,7 @@
 /* 3D container for the card */
 .card-visual {
   width:88px;
-  height:122px;
+  height:116px;
   perspective: 1200px;
   position: relative;
   flex: 0 0 auto;
@@ -399,7 +403,7 @@
 
 .kick-btn {
   position: absolute;
-  top: -20px;
+  top: 0px;
   right: 6px;
   width: 28px;
   height: 28px;
@@ -720,7 +724,7 @@
 .participant-card .surprise-icon {
   position: absolute;
   left: -3px;
-  top: -154px; /* align with kick button vertical offset */
+  top: -140px; /* align with kick button vertical offset */
   transform: translateY(0);
 }
 
@@ -1116,6 +1120,8 @@
   margin: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transition: background 0.3s, box-shadow 0.3s;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 /* Avatar (kartın ortasında) */
@@ -1136,10 +1142,13 @@
   font-weight: 600;
   font-size: 13px; /* İsmi daha da küçült */
   text-align: center; /* İsmi ortala */
-  white-space: nowrap;
+  /* allow wrapping instead of overflowing the card */
+  white-space: normal;
   overflow: hidden;
   text-overflow: ellipsis;
   margin-bottom: 4px; /* Avatar ile isim arasındaki boşluk */
+  word-break: break-word;
+  max-width: 100%;
 }
 
 /* Kartın alt kısmındaki durum */
@@ -1164,11 +1173,19 @@
 
   .participant-card .p-name {
     font-size: 10px; /* İsmi daha da küçült */
+    word-break: break-word;
+    max-width: 100%;
   }
 
   .participant-card .p-status {
     font-size: 10px; /* Durum metnini daha da küçült */
   }
+}
+
+/* Prevent inner elements from overflowing their card */
+.participant-card * {
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 /* Ensure the small "You" badge fits inside the narrow card */
@@ -1341,11 +1358,26 @@
   height: var(--h);
   overflow: visible;
   padding-left: 12px; /* small inset from the container left edge */
+  /* prevent the stacked deck from escaping the container on narrow viewports */
+  max-width: calc(100% - 24px);
+}
+
+.grid.stacked {
+  box-sizing: border-box;
+  max-width: 100%;
+  /* allow lifted/active cards to overflow in both directions so their
+    translated/raised visuals aren't clipped by the container. Hiding
+    horizontal overflow caused wrapped cards to lose their left edge. */
+  overflow: visible;
+  padding-left: 12px; /* ensure enough inset for the first card */
+  justify-content: flex-start;
 }
 
 .grid.stacked .cardBtn.poker {
-  /* place cards on the same baseline and overlap using negative margin-left */
-  margin: 0 0 0 -30px; /* negative left margin to stack horizontally; tuned to card width */
+  /* place cards on the same baseline and overlap using negative margin-left.
+     Use a capped calc() so the negative offset can't exceed a fraction of the
+     card width on narrow viewports and push the stack off-screen. */
+  margin: 0 0 0 calc(-1 * min(30px, calc(var(--w) * 0.28))); /* safe negative overlap */
   transition: transform .18s ease, box-shadow .18s ease, margin .18s ease;
   border-radius: 8px;
   box-shadow: 0 8px 20px rgba(2,6,23,0.12);
@@ -1359,11 +1391,11 @@
 @media (min-width: 720px) {
   .grid.stacked .cardBtn.poker:nth-child(n) { transform: translateY(0) rotate(0deg); }
   .grid.stacked .cardBtn.poker:nth-child(1) { margin-left: 0; }
-  .grid.stacked .cardBtn.poker:nth-child(2) { margin-left: -58px; }
-  .grid.stacked .cardBtn.poker:nth-child(3) { margin-left: -56px; }
-  .grid.stacked .cardBtn.poker:nth-child(4) { margin-left: -54px; }
-  .grid.stacked .cardBtn.poker:nth-child(5) { margin-left: -52px; }
-  .grid.stacked .cardBtn.poker:nth-child(6) { margin-left: -50px; }
+  .grid.stacked .cardBtn.poker:nth-child(2) { margin-left: calc(-1 * min(42px, calc(var(--w) * 0.36))); }
+  .grid.stacked .cardBtn.poker:nth-child(3) { margin-left: calc(-1 * min(44px, calc(var(--w) * 0.38))); }
+  .grid.stacked .cardBtn.poker:nth-child(4) { margin-left: calc(-1 * min(46px, calc(var(--w) * 0.40))); }
+  .grid.stacked .cardBtn.poker:nth-child(5) { margin-left: calc(-1 * min(48px, calc(var(--w) * 0.42))); }
+  .grid.stacked .cardBtn.poker:nth-child(6) { margin-left: calc(-1 * min(50px, calc(var(--w) * 0.44))); }
 }
 
 /* Hover / active card behavior: raise above neighbors and create visible gap */
@@ -1371,7 +1403,7 @@
 .grid.stacked .cardBtn.poker.active {
   /* lift and slightly pull the active card right so it separates from neighbors */
   transform: translateY(-18px) translateX(10px) scale(1.06);
-  z-index: 30 !important;
+  z-index: 9999 !important; /* ensure the active card is always above any nearby elements */
   box-shadow: 0 26px 48px rgba(2,6,23,0.22);
 }
 
@@ -1386,10 +1418,36 @@
 
 /* Mobile: reduce overlap so touch targets are accessible and horizontally scroll if needed */
 @media (max-width: 520px) {
-  .grid.stacked { height: calc(var(--h) * 1.05); }
-  .grid.stacked .cardBtn.poker { margin-left: -36px; min-width: calc(var(--w) * 0.7); }
-  .grid.stacked .cardBtn.poker:first-child { margin-left: 6px; }
-  .grid.stacked { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  /* On very small screens, allow the stack to wrap into multiple rows to avoid horizontal scroll
+     and ensure touch targets are large enough. */
+  .grid.stacked { height: auto; flex-wrap: wrap; gap: 6px; padding-left: 8px; }
+  .grid.stacked .cardBtn.poker { margin-left: 0; min-width: calc(var(--w) * 0.65); }
+  .grid.stacked .cardBtn.poker:first-child { margin-left: 0; }
+  .grid.stacked { overflow-x: hidden; }
+}
+
+/* Mid-size screens (e.g. ~800px) — prevent stacked negative margins from
+   pushing wrapped cards off the left edge. Allow the stack to wrap into
+   additional rows and remove negative left margins so wrapped items stay
+   fully visible. */
+@media (max-width: 900px) {
+  .grid.stacked {
+    /* allow cards to wrap to the next line instead of being clipped */
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-left: 8px;
+    overflow: visible; /* ensure lifted card still shows above */
+    height: auto;
+  }
+
+  .grid.stacked .cardBtn.poker {
+    /* remove negative left offsets when items wrap so they don't get
+       pushed outside the container on the left */
+    margin-left: 0;
+    min-width: calc(var(--w) * 0.65);
+  }
+
+  .grid.stacked .cardBtn.poker:first-child { margin-left: 0; }
 }
 
 /* accessibility: ensure keyboard focus visibly brings card forward */

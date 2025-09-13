@@ -49,9 +49,9 @@ body { margin:0; min-height:100vh; font-family: ui-sans-serif, system-ui, -apple
 .participant { display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border:1px solid rgba(2,6,23,0.04); border-radius:8px; background: #d2d2d263; }
 
 /* participant-card used in Room.jsx for participant tiles -- keep compact */
-.participant-card { display:flex; align-items:center; gap:6px; padding:4px 6px; border-radius:8px; border:1px solid rgba(2,6,23,0.04); background: #ffffff; width:100px; max-width:100px; flex: 0 0 160px; }
+.participant-card { display:flex; align-items:center; gap:6px; padding:4px 6px; border-radius:8px; border:1px solid rgba(2,6,23,0.04); background: #ffffff; width:100px; max-width:100px; flex: 0 0 160px; box-sizing: border-box; overflow: hidden; }
 .participant-card .p-info { display:flex; flex-direction:column; min-width:0; }
-.participant-card .p-name { font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:90px; }
+.participant-card .p-name { font-weight:600; color:var(--ink); white-space:normal; overflow:hidden; text-overflow:ellipsis; max-width:90px; word-break: break-word; }
 .participant-card .p-status { font-size:12px; color:var(--muted); }
 /* Make voted participants more prominent */
 .participant-card.voted {
