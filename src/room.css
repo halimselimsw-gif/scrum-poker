@@ -723,8 +723,8 @@
 }
 .participant-card .surprise-icon {
   position: absolute;
-  left: -3px;
-  top: -140px; /* align with kick button vertical offset */
+  left: -9px;
+  top: -135px; /* align with kick button vertical offset */
   transform: translateY(0);
 }
 
@@ -1031,19 +1031,25 @@
   color: #ffffff !important;
 }
 
-/* Let the SVG background show by making the rect transparent in dark mode */
+/* In dark mode, allow the SVG <rect> fill provided by React (JSX) to show through.
+   Previously this forced a transparent rect which made colorful cards look washed out.
+   We still provide a sensible fallback stroke color for contrast when needed. */
 .room-container.dark .card-svg rect {
-  fill: transparent !important;
-  stroke: red !important;
+  /* Do not override inline fills from JSX — let the component control the card color. */
+  fill: none; /* use 'none' so inline or attribute-based fills render as intended */
+  stroke: rgba(255,255,255,0.16); /* subtle highlight stroke for legibility on dark backgrounds */
 }
 
-/* Make card text white in dark mode */
+/* Make card text white in dark mode (but allow component-specified fills via inline attributes) */
 .room-container.dark .card-svg text {
-  fill: #ffffff !important;
+  fill: #ffffff; /* default text color for contrast */
 }
+
+/* Ensure subtitles inside the SVG remain readable in both themes */
+.room-container.dark .card-svg .subtitle { fill: #ffffff; opacity: 0.95 }
 
 /* Theme switcher (sun / moon) */
-.theme-switcher { display:flex; align-items:center; justify-content:space-between; gap:10px; padding: 6px 8px; }
+.theme-switcher { display:flex; align-items:center; justify-content:space-between; gap:10px; padding: 5px 5px; }
 .theme-switcher .theme-label { font-size:14px; color:#dddfe3; margin-left:8px; }
 .theme-switcher .theme-left { display:flex; align-items:center; gap:8px; }
 .theme-switcher .theme-timer { margin-left: auto; font-weight:700; color:var(--accent); }

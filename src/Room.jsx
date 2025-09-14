@@ -1420,7 +1420,7 @@ export default function Room({ roomId, name, onLeave }) {
                    // mark active on interaction
                    try { await markActiveNow(); } catch(e){}
                  }}
-                 style={{ display: 'flex', alignItems: 'center', padding: '4px' }}
+                 style={{ display: 'flex', alignItems: 'center', padding: '8px' }}
                >
                  <img src="/invite-icon.svg" alt="Invite" style={{ width: '16px', height: '16px', marginRight: '4px' }} />
                  Invite

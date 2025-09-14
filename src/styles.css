@@ -10,7 +10,7 @@
 /* Dark theme: softer near-black with cool-blue tint to reduce contrast */
 [data-theme="dark"] {
   --bg: #0b1220;        /* deep navy-black (soft, not pure black) */
-  --card: #0f1724;      /* slightly lighter card surface */
+  --card: #373737;      /* slightly lighter card surface */
   --ink: #e6eef6;       /* gentle light text */
   --muted: #9aa3ad;     /* muted gray */
   --accent: #22d3ee;    /* accent preserved */
@@ -34,7 +34,7 @@ body { margin:0; min-height:100vh; font-family: ui-sans-serif, system-ui, -apple
 }
 .card h1, .card h2, .header h1, .header h2 { color: var(--ink); }
 .badge { color: var(--muted); background: transparent; }
-.container { width: 100%; max-width: none; margin: 0; padding: 14px; }
+.container { width: 100%; max-width: none; margin: 0; padding: 4px; }
 .card { background: var(--card); border: 1px solid rgba(15,23,42,0.06); border-radius: 16px; padding: 20px; box-shadow: 0 6px 20px rgba(2,6,23,0.06); }
 .row { display:flex; gap:12px; flex-wrap: wrap; }
 .input { width:100%; padding:12px 14px; border-radius: 12px; border:1px solid rgba(15,23,42,0.08); background: #d2d2d263; color:var(--ink); }
